@@ -215,11 +215,11 @@ function injectStreamButton(magnets, title) {
 
   const streamBtn = document.createElement("button");
   streamBtn.className = "btn-secondary btn-stream";
-  streamBtn.innerHTML = "▶ Stream Now";
-  streamBtn.style.backgroundColor = "#e50914"; // Netflix red-ish
-  streamBtn.style.color = "white";
-  streamBtn.style.border = "none";
-  streamBtn.style.marginLeft = "10px";
+   streamBtn.innerHTML = "▶ Stream Now";
+  // streamBtn.style.backgroundColor = "#e50914"; // Netflix red-ish
+  // streamBtn.style.color = "white";
+  // streamBtn.style.border = "none";
+  // streamBtn.style.marginLeft = "10px";
 
   // Insert after Trailer button
   const trailerBtn = actionsContainer.querySelector(".btn-primary");

@@ -1,0 +1,231 @@
+/* MOBILE RESPONSIVE STYLES */
+@media (max-width: 768px) {
+  /* BACKDROP HEIGHT - 40vh */
+  main.movie-wrapper div.backdrop,
+  .movie-wrapper .backdrop,
+  main .backdrop,
+  .backdrop,
+  div.backdrop {
+    height: 40vh !important;
+    max-height: 40vh !important;
+    min-height: 40vh !important;
+  }
+
+  /* Content area - horizontal layout for poster and details */
+  .content-area {
+    flex-direction: row !important;
+    width: 100%;
+    padding: 15px;
+    gap: 15px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  /* Poster - LEFT SIDE, half width */
+  .poster {
+    width: calc(50% - 8px) !important;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .poster img {
+    width: 100% !important;
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+  }
+
+  /* Movie info - RIGHT SIDE, half width */
+  .movie-info {
+    width: calc(50% - 8px) !important;
+    max-width: calc(50% - 8px);
+    flex-shrink: 0;
+  }
+
+  /* Adjust font sizes for mobile */
+  .title {
+    font-size: 1.4rem !important;
+    text-align: left;
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+
+  .meta {
+    font-size: 0.75rem !important;
+    text-align: left;
+    margin-bottom: 10px;
+  }
+
+  .section-label {
+    font-size: 0.8rem !important;
+    margin-bottom: 4px;
+  }
+
+  .overview {
+    font-size: 0.75rem !important;
+    line-height: 1.4;
+    margin-bottom: 10px;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Buttons - smaller for mobile */
+  .actions {
+    flex-direction: row;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    width: auto;
+    padding: 8px 12px;
+    font-size: 0.75rem !important;
+    flex: 1;
+  }
+
+  /* HIDE similar movies on mobile */
+  .movie-card {
+    display: none !important;
+  }
+
+  /* Cast section */
+  .cast-section {
+    padding: 20px 15px;
+  }
+
+  .cast-section h3 {
+    font-size: 1.2rem;
+  }
+
+  .cast-card {
+    min-width: 100px;
+  }
+
+  .cast-card img {
+    width: 100px;
+    height: 135px;
+  }
+
+  .cast-name {
+    font-size: 0.8rem;
+  }
+
+  .cast-role {
+    font-size: 0.7rem;
+  }
+
+  /* Trailer/Details section - STACKED (video full width, details below) */
+  .triler-extra {
+    flex-direction: column !important;
+    padding: 0 15px;
+    gap: 15px;
+  }
+
+  /* Video player - FULL WIDTH */
+  .media-player-section {
+    width: 100%;
+  }
+
+  /* Details section - BELOW video */
+  .details-section {
+    width: 100% !important;
+    padding: 15px;
+  }
+
+  .details-section h3 {
+    font-size: 1.2rem;
+  }
+
+  .details-section ul {
+    font-size: 0.85rem;
+  }
+
+  /* Store player banner - INCREASED HEIGHT */
+  .store-player-banner {
+    height: 280px !important;
+  }
+
+  /* Header */
+  .site-header {
+    padding: 12px 15px;
+  }
+
+  .site-logo {
+    font-size: 1.3rem;
+  }
+
+  .site-nav a {
+    margin-left: 8px;
+    font-size: 0.8rem;
+  }
+}
+
+/* Extra small devices (< 400px) */
+@media (max-width: 400px) {
+  .backdrop {
+    height: 40vh !important;
+  }
+
+  .content-area {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .title {
+    font-size: 1.2rem !important;
+  }
+
+  .meta {
+    font-size: 0.7rem !important;
+  }
+
+  .overview {
+    font-size: 0.7rem !important;
+    -webkit-line-clamp: 3;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    padding: 6px 10px;
+    font-size: 0.7rem !important;
+  }
+
+  .store-player-banner {
+    height: 220px !important;
+  }
+}
+
+/* Larger phones (> 600px but < 768px) */
+@media (min-width: 600px) and (max-width: 768px) {
+  .backdrop {
+    height: 45vh !important;
+  }
+
+  .title {
+    font-size: 1.6rem !important;
+  }
+
+  .meta {
+    font-size: 0.85rem !important;
+  }
+
+  .overview {
+    font-size: 0.85rem !important;
+    -webkit-line-clamp: 5;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    padding: 10px 14px;
+    font-size: 0.85rem !important;
+  }
+
+  .store-player-banner {
+    height: 320px !important;
+  }
+}
