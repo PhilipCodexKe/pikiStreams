@@ -1,0 +1,61 @@
+/* Modal container */
+.trailer-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 1000;
+}
+
+/* Show the modal when aria-hidden = false */
+.trailer-modal[aria-hidden="false"] {
+  display: flex;
+}
+
+/* Card/box */
+.trailer-box {
+  position: relative;
+  width: 90%;
+  max-width: 900px;
+  background: #000;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+}
+
+/* Close button */
+.close-btn {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 30px;
+  color: white;
+  cursor: pointer;
+  z-index: 10;
+}
+
+/* Video wrapper (16:9 ratio) */
+.video-wrapper {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%;
+}
+
+/* Trailer iframe */
+.trailer-iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Click outside to close */
+.trailer-backdrop {
+  position: fixed;
+  inset: 0;
+}

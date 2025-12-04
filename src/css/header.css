@@ -1,0 +1,52 @@
+.site-header {
+  background-color: #1a1f2b;
+  padding: 1rem 0;
+}
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.site-logo {
+  color: #ffc107; /* yellow accent like IMDb */
+  font-size: 1.8rem;
+}
+.site-nav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 40px;
+  padding-right: 210px; /* Reserve space for the resting search bar */
+}
+
+.site-nav a {
+  color: #e5e5e5;
+  margin-right: 1.5rem;
+  text-decoration: none;
+  transition: opacity 0.3s;
+}
+
+.site-nav input[type="search"] {
+  padding: 0.4rem;
+  border-radius: 4px; /* Original radius */
+  border: none; /* Original border */
+  background-color: #fff; /* Original background */
+  color: #000; /* Original text color */
+  outline: none;
+  
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 200px; /* Resting width matching reserved space */
+  z-index: 10;
+  transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.site-nav input[type="search"]:hover,
+.site-nav input[type="search"]:focus {
+  width: 100%; /* Expand to cover links */
+  z-index: 20;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}

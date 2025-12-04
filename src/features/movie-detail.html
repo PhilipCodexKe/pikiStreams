@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PikiStreams</title>
+    <link rel="stylesheet" href="movie-card.css" />
+    <link rel="stylesheet" href="../css/header.css" />
+  </head>
+
+  <body>
+    <header class="site-header">
+      <div class="container header-inner">
+        <h1 class="site-logo">PikiStreams</h1>
+        <nav class="site-nav">
+          <a href="#">Home</a>
+          <a href="#">Trending</a>
+          <a href="#">Top Rated</a>
+          <a href="#">Upcoming</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="movie-wrapper">
+      <div class="backdrop">
+        <img class="backdrop-img" src="BACKDROP_URL" alt="" />
+        <div class="backdrop-overlay"></div>
+
+        <article
+          class="movie-card"
+          aria-labelledby="title-tt1234567"
+          data-id="tt1234567"
+        ></article>
+
+        <div class="content-area">
+          <div class="poster">
+            <img src="POSTER_URL" alt="Movie Poster" />
+          </div>
+
+          <div class="movie-info">
+            <h2 class="title">Movie Title (2025)</h2>
+            <p class="meta">1h 42m • Action • 7.9 Rating</p>
+
+            <h3 class="section-label">Overview</h3>
+            <p class="overview">
+              Movie overview text goes here. A short description summarizing the
+              plot.
+            </p>
+
+            <div class="actions">
+              <button class="btn-primary">▶ Watch Trailer</button>
+              <button class="btn-secondary">＋ Add to Watchlist</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- CAST -->
+    <section class="cast-section">
+      <h3>Top Cast</h3>
+
+      <div class="cast-scroll">
+        <div class="cast-card">
+          <img src="CAST_IMG" alt="" />
+          <p class="cast-name">Actor Name</p>
+          <p class="cast-role">as Character</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="triler-extra">
+      <section class="media-player-section">
+        <div class="store-player-banner">
+          <div class="player-overlay"></div>
+          <button class="store-play-btn">
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+        </button>
+        <span class="play-trailer-label">Play Trailer</span>
+      </div>
+    </section>
+      <section class="details-section">
+      <h3>Should Know 😎</h3>
+      <ul>
+        <li><strong>Status:</strong> Released</li>
+        <li><strong>Language:</strong> English</li>
+        <li><strong>Budget:</strong> $90,000,000</li>
+        <li><strong>Revenue:</strong> $430,000,000</li>
+      </ul>
+    </section>
+    </div>
+
+
+
+    <script type="module" src="movie-details.js"></script>
+  </body>
+</html>

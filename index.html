@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PikiStreams</title>
+    <link rel="stylesheet" href="src/css/index.css" />
+    <link rel="stylesheet" href="src/css/trailer.css" />
+    <link rel="stylesheet" href="src/css/header.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container header-inner">
+        <h1 class="site-logo">PikiStreams</h1>
+        <nav class="site-nav">
+          <a href="index.html">Home</a>
+          <a href="#trending-section">Trending</a>
+          <a href="#top-rated-section">Top Rated</a>
+          <a href="#latest-section">Latest</a>
+          <a href="#upcoming-section">Upcoming</a>
+          <input type="search" id="search-input" placeholder="Search movies..." />
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <div id="home-content">
+      <section class="hero">
+        <div class="hero-content">
+          <h2 class="hero-title">Featured Movie Title</h2>
+          <p class="shortDesc">
+            Short tagline or description for the featured movie.
+          </p>
+          <button class="btn detailsBtn">Watch Movie</button>
+          <button class="btn slider-trailer-btn">Watch Trailer</button>
+
+          <div id="trailerModal" class="trailer-modal" aria-hidden="true">
+            <div class="trailer-backdrop" data-close></div>
+
+            <div class="trailer-box">
+              <button class="close-btn" data-close>&times;</button>
+
+              <div class="video-wrapper">
+                <iframe
+                  id="trailerIframe"
+                  class="trailer-iframe"
+                  src=""
+                  title="Movie Trailer"
+                  frameborder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen
+                ></iframe>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="hero-image">
+          <img
+            src="placeholder-poster.jpg"
+            class="slide-image"
+            alt="Featured Movie Poster"
+          />
+        </div>
+      </section>
+
+      <section id="trending-section" class="movie-section">
+        <div class="container">
+          <h3>Trending Now</h3>
+
+
+          <button class="scroll-left" data-target="trending-movies">◀</button>
+          <button class="scroll-right" data-target="trending-movies">▶</button>
+
+          <div class="movie-grid" id="trending-movies">
+            <article
+              class="movie-card"
+              aria-labelledby="title-tt1234567"
+              data-id="tt1234567"
+            >
+              <div class="poster-wrap">
+                <img
+                  class="poster"
+                  src="poster.jpg"
+                  alt="Poster: Movie Title"
+                  loading="lazy"
+                />
+                <span class="rating-badge rate-good" aria-hidden="true"
+                  >8.3</span
+                >
+              </div>
+
+              <div class="card-body">
+                <h3 id="title-tt1234567" class="movie-title">
+                  Movie Title <span class="year">2024</span>
+                </h3>
+                <div class="meta">
+                  <span class="genre">Action</span>
+                  <span class="dot" aria-hidden="true">•</span>
+                  <span class="runtime">1h 45m</span>
+                </div>
+
+                <div class="action-row">
+                  <button
+                    class="btn btn-primary"
+                    type="button"
+                    aria-label="Open review for Movie Title"
+                  >
+                    Review
+                  </button>
+                  <button
+                    class="btn btn-ghost"
+                    type="button"
+                    aria-label="Add Movie Title to watchlist"
+                  >
+                    ☆
+                  </button>
+                </div>
+              </div>
+
+              <div class="hover-overlay" aria-hidden="true">
+                <p class="overview">
+                  Short overview or tagline for the movie. This appears on hover
+                  to give the user context without navigating.
+                </p>
+                <div class="overlay-actions">
+                  <button class="btn btn-primary">Read Full Review</button>
+                  <button class="btn btn-outline">Trailer</button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+      <section id="top-rated-section" class="movie-section">
+        <div class="container">
+          <h3>Top Rated</h3>
+          <button class="scroll-left" data-target="top-rated-movies">◀</button>
+          <button class="scroll-right" data-target="top-rated-movies">▶</button>
+
+          <div class="movie-grid" id="top-rated-movies"></div>
+        </div>
+      </section>
+      <section id="latest-section" class="movie-section">
+        <div class="container">
+          <h3>Latest</h3>
+          <button class="scroll-left" data-target="latest-movies">◀</button>
+          <button class="scroll-right" data-target="latest-movies">▶</button>
+
+          <div class="movie-grid" id="latest-movies"></div>
+        </div>
+      </section>
+      </div>
+      <div id="search-results" class="container movie-grid" style="display: none; margin-top: 2rem;"></div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <p>&copy; 2025 MovieStream. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <script type="module" src="src/js/main.js"></script>
+  </body>
+</html>
