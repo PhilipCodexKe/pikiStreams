@@ -991,6 +991,395 @@ section {
   text-shadow: 0 2px 4px rgba(0,0,0,0.8);
 }
 
+
+/* CAST CARD */
+.cast-card {
+  min-width: 140px;
+  scroll-snap-align: start;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.cast-card img {
+  width: 140px;
+  height: 190px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.cast-name {
+  font-weight: bold;
+  margin-top: 8px;
+}
+
+.cast-role {
+  opacity: 0.7;
+  font-size: 0.9rem;
+}
+
+/* DETAILS SECTION */
+.details-section {
+  padding: 40px 50px;
+}
+
+.details-section ul {
+  list-style: none;
+  padding: 0;
+  line-height: 1.8;
+}
+
+.download-section {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.magnet-btn {
+  text-decoration: none;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.magnet-btn:hover {
+  background: #01b4e4;
+  border-color: #01b4e4;
+}
+
+/* --- DOWNLOAD MODAL --- */
+.download-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.download-modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.download-modal {
+  background: #1a1f2b;
+  width: 90%;
+  max-width: 600px;
+  border-radius: 12px;
+  padding: 2rem;
+  position: relative;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.download-modal h3 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: #fff;
+  border-bottom: 1px solid #333;
+  padding-bottom: 1rem;
+}
+
+.close-modal-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: #aaa;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+/* --- STORE PLAYER BANNER --- */
+.triler-extra {
+  display: flex;
+  align-items: flex-start;
+  gap: 30px;
+  margin-top: 40px;
+  padding: 0 50px;
+}
+
+.media-player-section {
+  padding: 0;
+  margin-top: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.store-player-banner {
+  width: 100%;
+  min-width: unset;
+  height: 200px;
+  position: relative;
+  background-color: rgba(255, 255, 255, 0.05);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  gap: 12px;
+  border-radius: 12px;
+}
+
+/* Faded sides overlay */
+.player-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to right,
+    #0d0d0d 0%,
+    rgba(13, 13, 13, 0.6) 20%,
+    rgba(13, 13, 13, 0.2) 50%,
+    rgba(13, 13, 13, 0.6) 80%,
+    #0d0d0d 100%
+  );
+  z-index: 1;
+}
+
+.store-play-btn {
+  position: relative;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+}
+
+.store-play-btn:hover {
+  background: rgba(1, 180, 228, 0.8);
+  border-color: #01b4e4;
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(1, 180, 228, 0.5);
+}
+.store-play-btn svg {
+  margin-left: 4px;
+}
+
+.play-trailer-label {
+  position: relative;
+  z-index: 2;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+
+/* CAST CARD */
+.cast-card {
+  min-width: 140px;
+  scroll-snap-align: start;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.cast-card img {
+  width: 140px;
+  height: 190px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.cast-name {
+  font-weight: bold;
+  margin-top: 8px;
+}
+
+.cast-role {
+  opacity: 0.7;
+  font-size: 0.9rem;
+}
+
+/* DETAILS SECTION */
+.details-section {
+  padding: 40px 50px;
+}
+
+.details-section ul {
+  list-style: none;
+  padding: 0;
+  line-height: 1.8;
+}
+
+.download-section {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.magnet-btn {
+  text-decoration: none;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.magnet-btn:hover {
+  background: #01b4e4;
+  border-color: #01b4e4;
+}
+
+/* --- DOWNLOAD MODAL --- */
+.download-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.download-modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.download-modal {
+  background: #1a1f2b;
+  width: 90%;
+  max-width: 600px;
+  border-radius: 12px;
+  padding: 2rem;
+  position: relative;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.download-modal h3 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: #fff;
+  border-bottom: 1px solid #333;
+  padding-bottom: 1rem;
+}
+
+.close-modal-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: #aaa;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+/* --- STORE PLAYER BANNER --- */
+.triler-extra {
+  display: flex;
+  align-items: flex-start;
+  gap: 30px;
+  margin-top: 40px;
+  padding: 0 50px;
+}
+
+.media-player-section {
+  padding: 0;
+  margin-top: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.store-player-banner {
+  width: 100%;
+  min-width: unset;
+  height: 200px;
+  position: relative;
+  background-color: rgba(255, 255, 255, 0.05);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  gap: 12px;
+  border-radius: 12px;
+}
+
+/* Faded sides overlay */
+.player-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to right,
+    #0d0d0d 0%,
+    rgba(13, 13, 13, 0.6) 20%,
+    rgba(13, 13, 13, 0.2) 50%,
+    rgba(13, 13, 13, 0.6) 80%,
+    #0d0d0d 100%
+  );
+  z-index: 1;
+}
+
+.store-play-btn {
+  position: relative;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+}
+
+.store-play-btn:hover {
+  background: rgba(1, 180, 228, 0.8);
+  border-color: #01b4e4;
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(1, 180, 228, 0.5);
+}
+
+.store-play-btn svg {
+  margin-left: 4px;
+}
+
+.play-trailer-label {
+  position: relative;
+  z-index: 2;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
 /* DETAILS SECTION */
 .details-section {
   margin-left: 0;
@@ -998,4 +1387,180 @@ section {
   flex: 0 0 auto;
   width: 300px;
   padding: 20px;
+}
+
+/* ========================================
+   MOBILE / ANDROID RESPONSIVE STYLES
+   ======================================== */
+@media (max-width: 768px) {
+  /* Reduce backdrop height to 50vh */
+  .backdrop {
+    height: 50vh !important;
+  }
+
+  /* Content area - stack vertically */
+  .content-area {
+    flex-direction: column;
+    width: 100%;
+    padding: 20px;
+    gap: 0;
+    align-items: center;
+  }
+
+  /* Larger poster at the top */
+  .poster {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+
+  .poster img {
+    width: 320px;
+    max-width: 90%;
+  }
+
+  /* Movie info and similar movies container */
+  .movie-info {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* Increase font sizes for mobile readability */
+  .title {
+    font-size: 2.8rem;
+    text-align: center;
+  }
+
+  .meta {
+    font-size: 1.3rem;
+    text-align: center;
+  }
+
+  .section-label {
+    font-size: 1rem;
+  }
+
+  .overview {
+    font-size: 1.15rem;
+    line-height: 1.7;
+  }
+
+  /* Buttons */
+  .actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+    padding: 14px 20px;
+    font-size: 1.1rem;
+  }
+
+  /* Similar movies - position them to the right of movie details */
+  .movie-card {
+    position: static;
+    margin-left: 0;
+    margin-top: 20px;
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    padding: 0;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .rec-card {
+    width: 120px;
+  }
+
+  .rec-card img {
+    width: 100%;
+  }
+
+  /* Cast section */
+  .cast-section {
+    padding: 30px 20px;
+  }
+
+  .cast-section h3 {
+    font-size: 1.5rem;
+  }
+
+  /* Trailer/Details section */
+  .triler-extra {
+    flex-direction: column;
+    padding: 0 20px;
+    gap: 20px;
+  }
+
+  .details-section {
+    width: 100%;
+    padding: 20px;
+  }
+
+  .details-section h3 {
+    font-size: 1.5rem;
+  }
+
+  .details-section ul {
+    font-size: 1.1rem;
+  }
+
+  /* Store player banner */
+  .store-player-banner {
+    height: 250px;
+  }
+
+  /* Header adjustments */
+  .site-header {
+    padding: 15px 20px;
+  }
+
+  .site-logo {
+    font-size: 1.5rem;
+  }
+
+  .site-nav a {
+    margin-left: 10px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 480px) {
+  .backdrop {
+    height: 45vh !important;
+  }
+
+  .poster img {
+    width: 280px;
+  }
+
+  .title {
+    font-size: 2.2rem;
+  }
+
+  .meta {
+    font-size: 1.1rem;
+  }
+
+  .overview {
+    font-size: 1rem;
+  }
+
+  .rec-card {
+    width: 100px;
+  }
+
+  .cast-card {
+    min-width: 120px;
+  }
+
+  .cast-card img {
+    width: 120px;
+    height: 160px;
+  }
 }
