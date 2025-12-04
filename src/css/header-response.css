@@ -1,0 +1,89 @@
+/* HEADER RESPONSIVE STYLES FOR MOBILE */
+@media (max-width: 768px) {
+  /* Header - FIT PERFECTLY */
+  .site-header {
+    padding: 8px 10px;
+    max-width: 100vw;
+    overflow: hidden;
+  }
+
+  .site-header .container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+  }
+
+  .header-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .site-logo {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    margin: 0;
+  }
+
+  .site-nav {
+    display: flex;
+    gap: 5px;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .site-nav a {
+    margin-left: 0;
+    font-size: 0.75rem;
+    padding: 4px 6px;
+    white-space: nowrap;
+  }
+
+  /* Hide specific nav links on mobile to show only Home and Upcoming */
+  .site-nav a[href*="trending-section"],
+  .site-nav a[href*="top-rated-section"],
+  .site-nav a[href*="latest-section"] {
+    display: none !important;
+  }
+
+  /* Search Input Responsive */
+  .site-nav input[type="search"] {
+    width: 120px;
+    font-size: 0.8rem;
+    padding: 4px 8px;
+    position: static;
+    transform: none;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 400px) {
+  .site-logo {
+    font-size: 1rem;
+  }
+
+  .site-nav a {
+    font-size: 0.65rem;
+    padding: 3px 4px;
+  }
+  
+  .site-nav input[type="search"] {
+    width: 80px;
+  }
+}
+
+/* Larger phones */
+@media (min-width: 600px) and (max-width: 768px) {
+  .site-logo {
+    font-size: 1.3rem;
+  }
+
+  .site-nav a {
+    font-size: 0.85rem;
+  }
+  
+  .site-nav input[type="search"] {
+    width: 160px;
+  }
+}

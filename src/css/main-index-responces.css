@@ -1,0 +1,109 @@
+/* MAIN INDEX RESPONSIVE STYLES */
+
+@media (max-width: 768px) {
+  /* --- CONTAINER --- */
+  .container {
+    width: 95%;
+    padding: 0 10px;
+  }
+
+  /* --- HERO SECTION --- */
+  .hero {
+    height: 50vh !important;
+    min-height: 300px !important;
+    padding: 1.5rem;
+    align-items: flex-end; /* Align content to bottom on mobile often looks better */
+  }
+
+  .hero-content {
+    max-width: 100%;
+    text-align: left;
+  }
+
+  .hero-title {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .hero-content p {
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Limit text lines */
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .btn {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+  }
+
+  /* --- MOVIE SECTIONS --- */
+  .movie-section h3 {
+    font-size: 1.3rem;
+    margin: 1rem 0;
+    padding-left: 5px;
+  }
+
+  /* --- MOVIE GRID (Horizontal Scroll) --- */
+  .movie-grid {
+    gap: 10px;
+    padding: 0.5rem 0;
+    /* Ensure touch scrolling works */
+    -webkit-overflow-scrolling: touch; 
+  }
+
+  /* --- MOVIE CARD --- */
+  .movie-card {
+    width: 140px; /* Smaller width for mobile */
+    flex: 0 0 140px;
+  }
+
+  .poster-wrap {
+    aspect-ratio: 2/3;
+  }
+
+  .movie-title {
+    font-size: 0.9rem;
+  }
+
+  .movie-title .year {
+    font-size: 0.75rem;
+  }
+
+  .meta {
+    font-size: 0.75rem;
+  }
+
+  /* Hide hover overlay on mobile as hover doesn't exist */
+  .hover-overlay {
+    display: none !important;
+  }
+
+  /* --- SCROLL BUTTONS --- */
+  /* Hide scroll buttons on mobile, rely on touch scroll */
+  .scroll-left,
+  .scroll-right {
+    display: none !important;
+  }
+
+  /* --- SEARCH RESULTS --- */
+  #search-results {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 1rem;
+  }
+}
+
+/* Extra Small Devices */
+@media (max-width: 400px) {
+  .hero-title {
+    font-size: 1.5rem;
+  }
+  
+  .movie-card {
+    width: 130px;
+    flex: 0 0 130px;
+  }
+}

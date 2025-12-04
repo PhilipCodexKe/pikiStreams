@@ -3,21 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PikiStreams</title>
+    <title>Movie Details - PikiStreams</title>
+    <link rel="stylesheet" href="../css/index.css" />
+    <link rel="stylesheet" href="../css/trailer.css" />
     <link rel="stylesheet" href="../css/header.css" />
+    <link rel="stylesheet" href="../css/header-response.css" />
     <link rel="stylesheet" href="movie-card.css" />
     <link rel="stylesheet" href="movie-card-responce.css" />
   </head>
-
   <body>
     <header class="site-header">
       <div class="container header-inner">
-        <h1 class="site-logo">PikiStreams</h1>
+        <a href="../../index.html" style="text-decoration: none;"><h1 class="site-logo">PikiStreams</h1></a>
         <nav class="site-nav">
-          <a href="#">Home</a>
-          <a href="#">Trending</a>
-          <a href="#">Top Rated</a>
-          <a href="#">Upcoming</a>
+          <a href="../../index.html">Home</a>
+          <a href="../../index.html#trending-section">Trending</a>
+          <a href="../../index.html#top-rated-section">Top Rated</a>
+          <a href="../../index.html#upcoming-section">Upcoming</a>
         </nav>
       </div>
     </header>
@@ -56,6 +58,26 @@
       </div>
     </main>
 
+    <!-- SIMILAR MOVIES SECTION -->
+    <section class="similar-movies-section">
+      <h3>Suggested Movies</h3>
+      <button class="scroll-left" data-target="similarMoviesContainer">◀</button>
+      <button class="scroll-right" data-target="similarMoviesContainer">▶</button>
+      <div class="similar-movies-scroll" id="similarMoviesContainer">
+        <!-- Movies will be added here by JavaScript -->
+      </div>
+    </section>
+
+    <!-- LATEST MOVIES SECTION -->
+    <section class="similar-movies-section">
+      <h3>Latest Movies</h3>
+      <button class="scroll-left" data-target="latestMoviesContainer">◀</button>
+      <button class="scroll-right" data-target="latestMoviesContainer">▶</button>
+      <div class="similar-movies-scroll" id="latestMoviesContainer">
+        <!-- Latest movies will be added here by JavaScript -->
+      </div>
+    </section>
+
     <!-- CAST -->
     <section class="cast-section">
       <h3>Top Cast</h3>
@@ -91,8 +113,6 @@
       </ul>
     </section>
     </div>
-
-
 
     <script type="module" src="movie-details.js"></script>
   </body>

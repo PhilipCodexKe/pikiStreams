@@ -1,4 +1,4 @@
-import { getMovieDetails, getTrailers, API_KEY } from "../js/api.js";
+import { getMovieDetails, getTrailers, API_KEY, LATEST_URL } from "../js/api.js";
 
 let movieId = sessionStorage.getItem("recommendedMovieId");
 
@@ -11,9 +11,30 @@ if (movieId) {
   window.history.replaceState(null, "", newAddress);
   loadMovie(movieId);
   loadRecommendations(movieId);
+  loadLatestMovies();
 } else {
   console.error("No movie ID found");
 }
+
+// Scroll Buttons Logic
+const scrollBtns = document.querySelectorAll(".scroll-right, .scroll-left");
+
+scrollBtns.forEach((btn) => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const targetId = btn.dataset.target;
+    const container = document.getElementById(targetId);
+
+    if (!container) return;
+
+    const scrllAmnt = 600;
+    if (btn.classList.contains("scroll-left")) {
+      container.scrollBy({ left: -scrllAmnt, behavior: "smooth" });
+    } else {
+      container.scrollBy({ left: scrllAmnt, behavior: "smooth" });
+    }
+  });
+});
 
 async function loadRecommendations(movieId) {
   const url = `https://api.themoviedb.org/3/movie/${movieId}/recommendations?api_key=${API_KEY}`;
@@ -21,6 +42,7 @@ async function loadRecommendations(movieId) {
   const res = await fetch(url);
   const data = await res.json();
 
+  // Populate OLD overlay container (2 movies - hidden on mobile)
   const container = document.querySelector(".movie-card");
   container.innerHTML = "";
 
@@ -43,6 +65,85 @@ async function loadRecommendations(movieId) {
 
     container.appendChild(card);
   });
+
+  // Populate NEW similar movies section (ALL movies)
+  const similarContainer = document.getElementById("similarMoviesContainer");
+  if (similarContainer) {
+    similarContainer.innerHTML = "";
+
+    data.results.forEach((movie) => {
+      const img = movie.poster_path
+        ? `https://image.tmdb.org/t/p/w300${movie.poster_path}`
+        : "no-poster.jpg";
+
+      const rating = movie.vote_average ? movie.vote_average.toFixed(1) : "N/A";
+      const year = movie.release_date ? movie.release_date.split("-")[0] : "";
+      // Runtime is not available in recommendations API, using placeholder
+      const runtime = "~120m"; // Typical movie length
+
+      const card = document.createElement("div");
+      card.classList.add("rec-card");
+
+      card.innerHTML = `
+        <img src="${img}" alt="${movie.title}" />
+        <div class="rec-info">
+          <h4>${movie.title}</h4>
+          <div class="rec-meta">
+            <span class="rec-rating">⭐ ${rating}</span>
+            ${year ? `<span class="rec-year">${year}</span>` : ""}
+          </div>
+        </div>
+      `;
+
+      card.addEventListener("click", () => {
+        sessionStorage.setItem("recommendedMovieId", movie.id);
+        window.location.href = "/src/features/movie-detail.html";
+      });
+
+      similarContainer.appendChild(card);
+    });
+  }
+}
+
+// LOAD LATEST MOVIES
+async function loadLatestMovies() {
+  const res = await fetch(LATEST_URL);
+  const data = await res.json();
+
+  const latestContainer = document.getElementById("latestMoviesContainer");
+  if (latestContainer) {
+    latestContainer.innerHTML = "";
+
+    data.results.forEach((movie) => {
+      const img = movie.poster_path
+        ? `https://image.tmdb.org/t/p/w300${movie.poster_path}`
+        : "no-poster.jpg";
+
+      const rating = movie.vote_average ? movie.vote_average.toFixed(1) : "N/A";
+      const year = movie.release_date ? movie.release_date.split("-")[0] : "";
+
+      const card = document.createElement("div");
+      card.classList.add("rec-card");
+
+      card.innerHTML = `
+        <img src="${img}" alt="${movie.title}" />
+        <div class="rec-info">
+          <h4>${movie.title}</h4>
+          <div class="rec-meta">
+            <span class="rec-rating">⭐ ${rating}</span>
+            ${year ? `<span class="rec-year">${year}</span>` : ""}
+          </div>
+        </div>
+      `;
+
+      card.addEventListener("click", () => {
+        sessionStorage.setItem("recommendedMovieId", movie.id);
+        window.location.href = "/src/features/movie-detail.html";
+      });
+
+      latestContainer.appendChild(card);
+    });
+  }
 }
 
 // MAIN LOADER
@@ -216,10 +317,6 @@ function injectStreamButton(magnets, title) {
   const streamBtn = document.createElement("button");
   streamBtn.className = "btn-secondary btn-stream";
    streamBtn.innerHTML = "▶ Stream Now";
-  // streamBtn.style.backgroundColor = "#e50914"; // Netflix red-ish
-  // streamBtn.style.color = "white";
-  // streamBtn.style.border = "none";
-  // streamBtn.style.marginLeft = "10px";
 
   // Insert after Trailer button
   const trailerBtn = actionsContainer.querySelector(".btn-primary");
@@ -349,24 +446,17 @@ function displayDownloadOptions(links, title, container) {
 
   // Action Buttons Container
   const btnContainer = document.createElement("div");
-  btnContainer.style.display = "flex";
-  btnContainer.style.gap = "10px";
-  btnContainer.style.marginTop = "1rem";
-  btnContainer.style.width = "100%";
+  btnContainer.className = "download-actions-container";
 
   // Download Button
   const downloadBtn = document.createElement("button");
   downloadBtn.className = "btn btn-primary";
   downloadBtn.textContent = "Download Movie";
-  downloadBtn.style.flex = "1";
   
   // Stream Button
   const streamBtn = document.createElement("button");
-  streamBtn.className = "btn btn-secondary";
+  streamBtn.className = "btn btn-secondary btn-stream";
   streamBtn.textContent = "Stream Movie";
-  streamBtn.style.flex = "1";
-  streamBtn.style.background = "#e50914"; // Netflix red for distinction
-  streamBtn.style.border = "none";
 
   btnContainer.appendChild(downloadBtn);
   btnContainer.appendChild(streamBtn);
@@ -404,16 +494,6 @@ function displayDownloadOptions(links, title, container) {
             btn.href = link.link; // Direct magnet link for download
         }
         btn.className = "btn-secondary magnet-btn";
-        btn.style.display = "flex";
-        btn.style.justifyContent = "space-between";
-        btn.style.alignItems = "center";
-        btn.style.marginTop = "10px";
-        btn.style.padding = "12px";
-        btn.style.textDecoration = "none";
-        btn.style.color = "white";
-        btn.style.backgroundColor = "#333";
-        btn.style.borderRadius = "5px";
-        btn.style.cursor = "pointer";
 
         const quality = link.quality !== 'Unknown' ? link.quality : '';
         const size = link.size !== 'Unknown' ? link.size : '';
