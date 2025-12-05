@@ -1,16 +1,17 @@
-import { getMovies, searchMovies, TRENDING_URL, TOP_RATED_URL, LATEST_URL } from "./api.js";
+import { getMovies, searchMovies, TRENDING_URL, TOP_RATED_URL, LATEST_URL, UPCOMING_URL } from "./api.js";
 import { createMovieCard } from "./moviecards.js";
 import { startHeroSlider } from "./slider.js";
 
-function putMovies(movies, container) {
+function putMovies(movies, container, isClickable = true) {
   container.innerHTML = "";
-  movies.forEach((movie) => container.appendChild(createMovieCard(movie)));
+  movies.forEach((movie) => container.appendChild(createMovieCard(movie, isClickable)));
 }
 
 async function loadHomepage() {
   const trendingContainer = document.querySelector("#trending-movies");
   const topRatedContainer = document.querySelector("#top-rated-movies");
   const latestContainer = document.querySelector("#latest-movies");
+  const upcomingContainer = document.querySelector("#upcoming-movies");
 
   const trending = await getMovies(TRENDING_URL);
   putMovies(trending, trendingContainer);
@@ -21,6 +22,9 @@ async function loadHomepage() {
 
   const latest = await getMovies(LATEST_URL);
   putMovies(latest, latestContainer);
+
+  const upcoming = await getMovies(UPCOMING_URL);
+  putMovies(upcoming, upcomingContainer, false);
 }
 
 const scrollBtns = document.querySelectorAll(".scroll-right, .scroll-left");

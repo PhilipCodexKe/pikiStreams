@@ -10,7 +10,7 @@
   /* --- HERO SECTION --- */
   .hero {
     height: 50vh !important;
-    min-height: 300px !important;
+    min-height: unset !important;
     padding: 1.5rem;
     align-items: flex-end; /* Align content to bottom on mobile often looks better */
   }
@@ -57,8 +57,9 @@
 
   /* --- MOVIE CARD --- */
   .movie-card {
-    width: 140px; /* Smaller width for mobile */
-    flex: 0 0 140px;
+    width: 170px; /* Smaller width for mobile */
+    flex: 0 0 170px;
+    height: 400px;
   }
 
   .poster-wrap {

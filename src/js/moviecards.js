@@ -1,4 +1,4 @@
-export function createMovieCard(movie) {
+export function createMovieCard(movie, isClickable = true) {
   const GENRES = {
     28: "Action",
     12: "Adventure",
@@ -30,6 +30,8 @@ export function createMovieCard(movie) {
     ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
     : "poster.jpg";
 
+  const year = movie.release_date ? movie.release_date.split("-")[0] : "N/A";
+
   const card = document.createElement("article");
   card.classList.add("movie-card");
   card.dataset.id = movie.id; // store movie ID in a data attribute
@@ -42,15 +44,20 @@ export function createMovieCard(movie) {
     <div class="card-body">
       <h3 class="movie-title">${movie.title}</h3>
       <span class="genre">${genres}</span>
+      <span class="year" style="display:block; font-size: 0.85rem; color: #9aa3ad; margin-top: 4px;">${year}</span>
     </div>
   `;
 
-  card.addEventListener("click", () => {
-    sessionStorage.removeItem("recommendedMovieId");
-    sessionStorage.setItem("movieId", movie.id);
-    // Navigate to detail page
-    window.location.href = "/src/features/movie-detail.html";
-  });
+  if (isClickable) {
+    card.addEventListener("click", () => {
+      sessionStorage.removeItem("recommendedMovieId");
+      sessionStorage.setItem("movieId", movie.id);
+      // Navigate to detail page
+      window.location.href = "/src/features/movie-detail.html";
+    });
+  } else {
+    card.classList.add("unclickable");
+  }
 
   return card;
 }

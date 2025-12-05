@@ -265,10 +265,10 @@ function fillMovieDetails(movie, trailers) {
   const list = document.querySelector(".details-section ul");
 
   list.innerHTML = `
-    <li><strong>Status:</strong> ${movie.status}</li>
-    <li><strong>Language:</strong> ${movie.original_language.toUpperCase()}</li>
-    <li><strong>Budget:</strong> $${movie.budget.toLocaleString()}</li>
-    <li><strong>Revenue:</strong> $${movie.revenue.toLocaleString()}</li>
+    <li><strong>Status:</strong> ${movie.status === "Released" ? "Released" : "Upcoming"}</li>
+    <li><strong>Language:</strong> ${movie.original_language === movie.original_language ? movie.original_language.toUpperCase() : 'N/A'}</li>
+    <li><strong>Budget:</strong> $${movie.budget === movie.budget ? movie.budget.toLocaleString() : 'N/A'}</li>
+    <li><strong>Revenue:</strong> $${movie.revenue === movie.revenue ? movie.revenue.toLocaleString() : 'N/A'}</li>
   `;
 }
 

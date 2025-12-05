@@ -54,6 +54,26 @@
     padding: 4px 8px;
     position: static;
     transform: none;
+    transition: width 0.3s ease;
+  }
+
+  .site-nav input[type="search"]:focus {
+    position: absolute;
+    right: 10px;
+    width: calc(100vw - 20px);
+    z-index: 100;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  }
+
+  /* Search Suggestions Mobile */
+  .search-suggestions {
+    position: fixed; /* Use fixed to break out of nav flow */
+    top: 60px; /* Below header */
+    left: 10px;
+    right: 10px;
+    width: calc(100vw - 20px) !important;
+    max-width: none !important;
+    z-index: 101;
   }
 }
 

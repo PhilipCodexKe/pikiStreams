@@ -5,6 +5,7 @@ export const API_KEY = "ab060bf4b27b23c908e05859d2ef7451";
 export const TRENDING_URL = `https://api.themoviedb.org/3/trending/movie/week?api_key=${API_KEY}`;
 export const TOP_RATED_URL = `https://api.themoviedb.org/3/movie/top_rated?api_key=${API_KEY}`;
 export const LATEST_URL = `https://api.themoviedb.org/3/movie/now_playing?api_key=${API_KEY}`;
+export const UPCOMING_URL = `https://api.themoviedb.org/3/movie/upcoming?api_key=${API_KEY}`;
 
 export const getMovieDetailUrl = (movieId) =>
   `https://api.themoviedb.org/3/movie/${movieId}?api_key=${API_KEY}&append_to_response=videos,credits`;

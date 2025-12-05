@@ -479,3 +479,11 @@ body {
 .close-modal-btn:hover {
   color: #fff;
 }
+
+/* Unclickable movie card */
+.movie-card.unclickable {
+  cursor: default;
+}
+.movie-card.unclickable:hover {
+  transform: none; /* Optional: disable hover scale effect if desired */
+}
