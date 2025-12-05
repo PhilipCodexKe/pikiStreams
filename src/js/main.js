@@ -25,6 +25,12 @@ async function loadHomepage() {
 
   const upcoming = await getMovies(UPCOMING_URL);
   putMovies(upcoming, upcomingContainer, false);
+
+  // Hide loader
+  const loader = document.getElementById("page-loader");
+  if (loader) {
+    loader.classList.add("hidden");
+  }
 }
 
 const scrollBtns = document.querySelectorAll(".scroll-right, .scroll-left");

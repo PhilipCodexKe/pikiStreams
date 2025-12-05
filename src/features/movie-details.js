@@ -9,11 +9,21 @@ if (movieId) {
   // Update URL after loading
   const newAddress = `movie-detail.html?id=${movieId}`;
   window.history.replaceState(null, "", newAddress);
-  loadMovie(movieId);
-  loadRecommendations(movieId);
-  loadLatestMovies();
+  
+  Promise.all([
+    loadMovie(movieId),
+    loadRecommendations(movieId),
+    loadLatestMovies()
+  ]).then(() => {
+    const loader = document.getElementById("page-loader");
+    if (loader) {
+      loader.classList.add("hidden");
+    }
+  });
 } else {
   console.error("No movie ID found");
+  const loader = document.getElementById("page-loader");
+  if (loader) loader.classList.add("hidden");
 }
 
 // Scroll Buttons Logic
