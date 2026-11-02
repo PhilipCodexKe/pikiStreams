@@ -48,9 +48,9 @@ async function runBulkWorker() {
                 continue;
             }
 
-            console.log(`[Worker] Picked job #${item.id}: "${item.title}" (${item.year || 'any year'})`);
+            console.log(`[Worker] Picked job #${item.id}: "${item.title}" (${item.year || 'any year'})${item.tmdb_id ? ` [TMDB: ${item.tmdb_id}]` : ''}`);
 
-            const streams = await searchMovieStreams(item.title, item.year);
+            const streams = await searchMovieStreams(item.title, item.year, false, item.tmdb_id);
 
             if (streams && streams.length > 0) {
                 console.log(`[Worker] Successfully scraped & saved ${streams.length} streams for "${item.title}".`);

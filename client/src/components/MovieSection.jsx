@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import MovieCard from './MovieCard';
 
-export default function MovieSection({ id, title, icon, movies = [], scrollable = false }) {
+export default function MovieSection({ id, title, icon, movies = [], scrollable = false, isTv = false }) {
   const containerRef = useRef(null);
 
   const handleScroll = (direction) => {
@@ -54,7 +54,7 @@ export default function MovieSection({ id, title, icon, movies = [], scrollable 
         {/* ── Cards ── */}
         <div ref={containerRef} className="movie-grid">
           {movies.map((movie) => (
-            <MovieCard key={movie.id} movie={movie} />
+            <MovieCard key={movie.id} movie={movie} isTv={isTv} />
           ))}
         </div>
       </div>

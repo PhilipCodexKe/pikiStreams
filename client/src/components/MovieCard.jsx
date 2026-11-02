@@ -2,8 +2,12 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GENRES, IMAGE_BASE_W500 } from '../services/api';
 
-export default function MovieCard({ movie, isClickable = true }) {
+export default function MovieCard({ movie, isClickable = true, isTv = false }) {
   const navigate = useNavigate();
+
+  const isTvShow = isTv || movie.media_type === 'tv' || (!movie.title && !!movie.name);
+  const title = movie.title || movie.name || 'Untitled';
+  const releaseDate = movie.release_date || movie.first_air_date;
 
   const genres = (movie.genre_ids || [])
     .map((id) => GENRES[id])
@@ -15,7 +19,7 @@ export default function MovieCard({ movie, isClickable = true }) {
     ? `${IMAGE_BASE_W500}${movie.poster_path}`
     : 'https://via.placeholder.com/300x450?text=No+Poster';
 
-  const year     = movie.release_date ? movie.release_date.split('-')[0] : 'N/A';
+  const year     = releaseDate ? releaseDate.split('-')[0] : 'N/A';
   const numRating = movie.vote_average ? Number(movie.vote_average.toFixed(1)) : 0;
   const rating    = movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A';
 
@@ -23,7 +27,13 @@ export default function MovieCard({ movie, isClickable = true }) {
     numRating >= 7 ? 'rate-good' : numRating >= 5 ? 'rate-mid' : 'rate-bad';
 
   const handleClick = () => {
-    if (isClickable) navigate(`/movie/${movie.id}`);
+    if (isClickable) {
+      if (isTvShow) {
+        navigate(`/movie/${movie.id}?type=tv`);
+      } else {
+        navigate(`/movie/${movie.id}`);
+      }
+    }
   };
 
   return (
@@ -34,7 +44,7 @@ export default function MovieCard({ movie, isClickable = true }) {
     >
       {/* ── Poster ── */}
       <div className="poster-wrap">
-        <img className="poster" src={poster} alt={movie.title} loading="lazy" />
+        <img className="poster" src={poster} alt={title} loading="lazy" />
 
         {/* Rating badge */}
         <span className={`rating-badge ${rateClass}`}>{rating}</span>
@@ -53,7 +63,7 @@ export default function MovieCard({ movie, isClickable = true }) {
 
       {/* ── Card body ── */}
       <div className="card-body">
-        <h3 className="movie-title">{movie.title}</h3>
+        <h3 className="movie-title">{title}</h3>
         <div className="meta">
           {genres && <span className="genre">{genres}</span>}
           {genres && <span className="dot" aria-hidden="true">•</span>}

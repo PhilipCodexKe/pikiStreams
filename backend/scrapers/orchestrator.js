@@ -1,5 +1,6 @@
 const { chromium } = require('playwright');
-const { providers } = require('./providers');
+const axios = require('axios');
+const { providers, eztv } = require('./providers');
 const { normalizeAndDeduplicate } = require('./engine/normalizer');
 const { applyPopupShield } = require('./engine/playwright-shield');
 const { getStreamsForMovie, saveStreams } = require('../database/supabase');
@@ -31,9 +32,9 @@ const getBrowser = async () => {
  * 4. Only triggers Playwright if Cheerio yielded insufficient streams.
  * 5. Normalizes, deduplicates by infoHash, saves to Supabase, and returns.
  */
-const searchMovieStreams = async (title, year = null, forceRefresh = false) => {
+const searchMovieStreams = async (title, year = null, forceRefresh = false, tmdbId = null) => {
     const cleanTitle = title.trim();
-    console.log(`[Orchestrator] Searching streams for: "${cleanTitle}" (${year || 'any year'})`);
+    console.log(`[Orchestrator] Searching streams for: "${cleanTitle}" (${year || 'any year'})${tmdbId ? ` [TMDB ID: ${tmdbId}]` : ''}`);
 
     // 1. Check database first (instant 0ms response)
     if (!forceRefresh) {
@@ -135,7 +136,7 @@ const searchMovieStreams = async (title, year = null, forceRefresh = false) => {
     // 5. Persist directly into Supabase
     if (normalizedStreams.length > 0) {
         try {
-            await saveStreams(cleanTitle, year, normalizedStreams);
+            await saveStreams(cleanTitle, year, normalizedStreams, tmdbId);
             console.log(`[Orchestrator] Successfully saved ${normalizedStreams.length} streams to Supabase.`);
         } catch (dbErr) {
             console.error('[Orchestrator] Error saving streams to Supabase:', dbErr.message);
@@ -145,6 +146,96 @@ const searchMovieStreams = async (title, year = null, forceRefresh = false) => {
     return normalizedStreams;
 };
 
+/**
+ * TV Show Stream Orchestrator
+ * 1. Checks Supabase cache for this specific episode.
+ * 2. Resolves TMDB ID to IMDb ID via TMDB external_ids (with TVMaze fallback).
+ * 3. Queries EZTV API for the show and filters by season and episode.
+ * 4. Normalizes, deduplicates, and caches results to Supabase.
+ */
+const searchTvStreams = async (tmdbId, season, episode, title = '', forceRefresh = false) => {
+    const sNum = parseInt(season, 10);
+    const eNum = parseInt(episode, 10);
+    const episodeTag = `S${String(sNum).padStart(2, '0')}E${String(eNum).padStart(2, '0')}`;
+    const cleanTitle = (title || 'TV Show').trim();
+    const searchIdentifier = `${cleanTitle} ${episodeTag}`;
+
+    console.log(`[Orchestrator] Searching TV streams for: "${searchIdentifier}" (TMDB ID: ${tmdbId})`);
+
+    // 1. Check database cache
+    if (!forceRefresh) {
+        const cached = await getStreamsForMovie(searchIdentifier);
+        if (cached && cached.length > 0) {
+            console.log(`[Orchestrator] Cache HIT in Supabase: Found ${cached.length} TV streams for "${searchIdentifier}".`);
+            return cached;
+        }
+    }
+
+    // 2. Resolve IMDb ID from TMDB
+    let imdbId = null;
+    const tmdbApiKey = process.env.TMDB_API_KEY || 'ab060bf4b27b23c908e05859d2ef7451';
+
+    if (tmdbId) {
+        try {
+            const tmdbRes = await axios.get(`https://api.themoviedb.org/3/tv/${tmdbId}/external_ids?api_key=${tmdbApiKey}`, {
+                timeout: 5000
+            });
+            imdbId = tmdbRes.data?.imdb_id;
+            if (imdbId) {
+                console.log(`[Orchestrator] Resolved TMDB ID ${tmdbId} to IMDb ID: ${imdbId}`);
+            }
+        } catch (tmdbErr) {
+            console.warn(`[Orchestrator] TMDB external_ids lookup failed for ID ${tmdbId}:`, tmdbErr.message);
+        }
+    }
+
+    // Fallback: If no IMDb ID yet, try TVMaze by title
+    if (!imdbId && cleanTitle) {
+        try {
+            const tvmazeRes = await axios.get(`https://api.tvmaze.com/singlesearch/shows?q=${encodeURIComponent(cleanTitle)}`, {
+                timeout: 4000
+            });
+            imdbId = tvmazeRes.data?.externals?.imdb;
+            if (imdbId) {
+                console.log(`[Orchestrator] TVMaze resolved "${cleanTitle}" to IMDb ID: ${imdbId}`);
+            }
+        } catch (tvmazeErr) {
+            console.warn(`[Orchestrator] TVMaze search failed for "${cleanTitle}":`, tvmazeErr.message);
+        }
+    }
+
+    if (!imdbId) {
+        console.warn(`[Orchestrator] Unable to find IMDb ID for "${cleanTitle}". Cannot query EZTV.`);
+        return [];
+    }
+
+    // 3. Query EZTV Provider
+    let tvStreams = [];
+    try {
+        console.log(`[Orchestrator] Querying EZTV for IMDb ID ${imdbId} (${episodeTag})...`);
+        tvStreams = await eztv.searchTv(imdbId, sNum, eNum);
+        console.log(`[Orchestrator] EZTV returned ${tvStreams.length} stream(s) for ${episodeTag}.`);
+    } catch (eztvErr) {
+        console.error(`[Orchestrator] EZTV query failed:`, eztvErr.message);
+    }
+
+    // 4. Normalize and rank
+    const normalized = normalizeAndDeduplicate(tvStreams);
+
+    // 5. Cache to Supabase
+    if (normalized.length > 0) {
+        try {
+            await saveStreams(searchIdentifier, null, normalized, tmdbId);
+            console.log(`[Orchestrator] Cached ${normalized.length} TV streams to Supabase.`);
+        } catch (dbErr) {
+            console.error('[Orchestrator] Error caching TV streams to Supabase:', dbErr.message);
+        }
+    }
+
+    return normalized;
+};
+
 module.exports = {
-    searchMovieStreams
+    searchMovieStreams,
+    searchTvStreams
 };

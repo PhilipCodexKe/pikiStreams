@@ -51,13 +51,15 @@ const getStreamsForMovie = async (title, year = null) => {
  * @param {string} searchTitle - e.g. "Avatar"
  * @param {number|null} year - e.g. 2009
  * @param {Array} streamsList - Array of scraped torrent objects
+ * @param {number|null} tmdb_id - TMDB Movie ID (optional)
  */
-const saveStreams = async (searchTitle, year, streamsList) => {
+const saveStreams = async (searchTitle, year, streamsList, tmdb_id = null) => {
     if (!streamsList || streamsList.length === 0) return [];
 
     try {
         const cleanSearchTitle = normalizeTitle(searchTitle);
         const parsedYear = year ? parseInt(year, 10) : null;
+        const parsedTmdbId = tmdb_id ? parseInt(tmdb_id, 10) : null;
 
         const payload = streamsList.map(s => {
             const item = {
@@ -73,6 +75,9 @@ const saveStreams = async (searchTitle, year, streamsList) => {
                 provider: s.provider || 'unknown',
                 updated_at: new Date()
             };
+            if (parsedTmdbId) {
+                item.tmdb_id = parsedTmdbId;
+            }
             // Only attach if present so inserts won't fail if column doesn't exist in Supabase table
             if (s.torrentUrl) {
                 item.torrent_url = s.torrentUrl;
@@ -112,22 +117,64 @@ const saveStreams = async (searchTitle, year, streamsList) => {
  */
 const enqueueBulk = async (titlesList) => {
     try {
-        const payload = titlesList.map(item => {
-            const isObj = typeof item === 'object';
-            return {
-                title: normalizeTitle(isObj ? item.title : item),
-                year: isObj && item.year ? parseInt(item.year, 10) : null,
-                status: 'pending'
-            };
-        });
+        // 1. Deduplicate the incoming batch locally by tmdb_id and normalized title
+        const seenIds = new Set();
+        const seenTitles = new Set();
+        const uniquePayload = [];
 
+        for (const item of titlesList) {
+            const isObj = typeof item === 'object';
+            const tmdb_id = isObj && item.tmdb_id ? parseInt(item.tmdb_id, 10) : (isObj && item.id ? parseInt(item.id, 10) : null);
+            const title = normalizeTitle(isObj ? item.title : item);
+            const year = isObj && item.year ? parseInt(item.year, 10) : null;
+
+            if (!title) continue;
+
+            if (tmdb_id && seenIds.has(tmdb_id)) continue;
+            if (seenTitles.has(title)) continue;
+
+            if (tmdb_id) seenIds.add(tmdb_id);
+            seenTitles.add(title);
+
+            uniquePayload.push({
+                tmdb_id,
+                title,
+                year,
+                status: 'pending'
+            });
+        }
+
+        if (uniquePayload.length === 0) return [];
+
+        // 2. Fetch existing items in bulk_queue so we only insert genuinely new ones
+        const titles = uniquePayload.map(p => p.title);
+        const { data: existingRows } = await supabase
+            .from('bulk_queue')
+            .select('title, tmdb_id')
+            .in('title', titles);
+
+        const existingSet = new Set((existingRows || []).map(r => r.title));
+        (existingRows || []).forEach(r => { if (r.tmdb_id) existingSet.add(r.tmdb_id); });
+
+        const toInsert = uniquePayload.filter(p => !existingSet.has(p.title) && (!p.tmdb_id || !existingSet.has(p.tmdb_id)));
+
+        if (toInsert.length === 0) {
+            console.log(`[Supabase enqueueBulk] All ${uniquePayload.length} movies already exist in bulk_queue.`);
+            return [];
+        }
+
+        // 3. Insert only the fresh items
         const { data, error } = await supabase
             .from('bulk_queue')
-            .upsert(payload, { onConflict: 'title', ignoreDuplicates: true })
+            .insert(toInsert)
             .select();
 
-        if (error) throw error;
-        return data;
+        if (error) {
+            console.error('[Supabase enqueueBulk error]:', error.message);
+            return [];
+        }
+
+        return data || [];
     } catch (err) {
         console.error('[Supabase enqueueBulk error]:', err.message);
         return [];

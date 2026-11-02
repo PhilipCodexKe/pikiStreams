@@ -5,44 +5,59 @@
 @media (max-width: 768px) {
   /* Fixed header still fills properly on mobile */
   .site-header {
-    padding: 0 14px;
-    height: 60px;
+    padding: 0 12px;
+    height: 58px;
   }
 
   /* Override nav-h token for smaller nav on mobile */
-  .app { padding-top: 60px; }
+  .app { padding-top: 58px; }
 
   .header-inner {
-    gap: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
   }
 
+  /* 1. Small Logo on the left */
   .site-logo {
-    font-size: 1.25rem;
+    font-size: 1.05rem;
+    flex-shrink: 0;
   }
 
-  /* Pill nav — compress it */
+  /* 2. Home in the middle */
   .site-nav {
-    padding: 3px;
+    display: flex;
+    justify-content: center;
+    padding: 3px 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
     gap: 0;
   }
 
   .site-nav a {
-    font-size: 0.72rem;
-    padding: 5px 8px;
+    font-size: 0.75rem;
+    padding: 4px 10px;
   }
 
-  /* Hide middle links, keep Home + Upcoming */
+  /* Hide other links on mobile so Home stays clean in the middle */
   .site-nav a[href*="trending-section"],
   .site-nav a[href*="top-rated-section"],
-  .site-nav a[href*="latest-section"] {
+  .site-nav a[href*="latest-section"],
+  .site-nav a[href*="upcoming-section"] {
     display: none !important;
   }
 
-  /* Search collapses to icon, expands to full width on focus */
-  .search-wrap { width: 36px; }
+  /* 3. Search bar on the right */
+  .search-wrap {
+    width: 34px;
+    flex-shrink: 0;
+  }
+
   .search-wrap.search-active {
     position: fixed;
-    top: 12px;
+    top: 10px;
     left: 10px;
     right: 10px;
     width: calc(100vw - 20px);
@@ -52,7 +67,7 @@
   /* Suggestions below the expanded bar */
   .search-suggestions {
     position: fixed;
-    top: 72px;
+    top: 66px;
     left: 10px;
     right: 10px;
     width: calc(100vw - 20px) !important;
@@ -61,14 +76,9 @@
   }
 }
 
-/* Extra small */
+/* Extra small screens */
 @media (max-width: 420px) {
-  .site-logo { font-size: 1.1rem; }
-  .site-nav a { font-size: 0.68rem; padding: 4px 7px; }
-}
-
-/* Larger phones */
-@media (min-width: 600px) and (max-width: 768px) {
-  .site-logo { font-size: 1.35rem; }
-  .site-nav a { font-size: 0.8rem; }
+  .site-logo { font-size: 0.95rem; }
+  .site-nav a { font-size: 0.72rem; padding: 4px 8px; }
+  .search-wrap { width: 32px; }
 }

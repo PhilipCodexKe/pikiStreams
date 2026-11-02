@@ -10,16 +10,24 @@
   }
 
   /* Sections */
+  .movie-section {
+    padding-top: 0 !important;
+  }
+
   .movie-section h3 {
-    font-size: 1rem !important;
-    margin: 0.8rem 0 !important;
+    font-size: 0.95rem !important;
+    margin: 0 !important;
     padding-left: 2px;
+  }
+
+  .section-header {
+    margin-bottom: 6px !important;
   }
 
   /* Grid */
   .movie-grid {
     gap: 10px;
-    padding: 0.4rem 0;
+    padding: 0 !important;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -29,13 +37,20 @@
     flex: 0 0 155px !important;
   }
 
-  .movie-title { font-size: 0.82rem; }
+  .movie-title {
+    font-size: 0.82rem;
+  }
 
   /* Hide hover overlay on touch screens */
-  .card-hover-overlay { display: none !important; }
+  .card-hover-overlay {
+    display: none !important;
+  }
 
   /* Hide scroll buttons on mobile */
-  .scroll-left, .scroll-right { display: none !important; }
+  .scroll-left,
+  .scroll-right {
+    display: none !important;
+  }
 
   /* Search results */
   #search-results {
@@ -44,7 +59,9 @@
   }
 
   /* Home sections padding */
-  .home-sections { padding: 4px 0 32px; }
+  .home-sections {
+    padding: 0 0 24px !important;
+  }
 }
 
 /* Extra small */

@@ -463,14 +463,14 @@
    CAST SECTION
    ============================================================ */
 .md-cast-section {
-  padding: 0 0 8px;
+  padding: 0;
 }
 
 .md-section-heading {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 0;
+  margin-bottom: 0;
 }
 
 .md-section-heading-icon {
@@ -520,7 +520,7 @@
   overflow: hidden;
   background: var(--bg-elevated);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  margin-bottom: 4px;
+  margin-bottom: 0;
   position: relative;
 }
 
@@ -578,10 +578,30 @@
   width: 90%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 16px 0 32px;
+  padding: 0 0 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 4px;
+}
+
+/* Compact movie sections inside the movie detail page */
+.md-below .movie-section {
+  padding-top: 10px;
+  margin-top: 0;
+}
+
+.md-below .section-header {
+  margin-bottom: 6px;
+}
+
+.md-below .movie-grid {
+  padding: 6px 0 10px;
+  gap: 12px;
+}
+
+.md-below .container {
+  width: 100%;
+  padding: 0;
 }
 
 /* ── Divider ── */
@@ -598,22 +618,47 @@
 }
 
 /* ============================================================
-   STREAM / DOWNLOAD MODAL — upgraded
+   STREAM / DOWNLOAD MODAL — upgraded with smooth entry & exit
    ============================================================ */
 .md-modal-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.88);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  animation: mdOverlayIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.md-modal-overlay.closing {
+  animation: mdOverlayOut 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes mdOverlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes mdOverlayOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
 .md-modal {
   background: var(--bg-elevated);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(168, 85, 247, 0.2);
   padding: 28px;
   border-radius: 16px;
   max-width: 700px;
@@ -624,7 +669,35 @@
   position: relative;
   box-shadow:
     0 24px 64px rgba(0, 0, 0, 0.7),
-    0 0 0 1px rgba(168, 85, 247, 0.08);
+    0 0 30px rgba(168, 85, 247, 0.12);
+  animation: mdModalIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.md-modal.closing {
+  animation: mdModalOut 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes mdModalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes mdModalOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.94) translateY(10px);
+  }
 }
 
 .md-modal-close {
@@ -767,6 +840,276 @@
   color: rgba(255, 255, 255, 0.35);
   font-size: 0.9rem;
   line-height: 1.6;
+}
+
+/* ── Embedded Video Player (Between Cast & More Like This) ── */
+.md-inline-player-section {
+  width: 100%;
+  margin: 30px 0 10px;
+  background: rgba(18, 18, 28, 0.7);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.6),
+    0 0 30px rgba(168, 85, 247, 0.1);
+  backdrop-filter: blur(12px);
+}
+
+.md-inline-player-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: rgba(10, 10, 18, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+
+.md-inline-player-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.md-inline-player-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.md-inline-player-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.md-player-action-btn,
+.md-player-close-btn {
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.md-player-action-btn {
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  color: #d8b4fe;
+}
+
+.md-player-action-btn:hover {
+  background: rgba(168, 85, 247, 0.25);
+  border-color: rgba(168, 85, 247, 0.55);
+  color: #fff;
+}
+
+.md-player-close-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.md-player-close-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+.md-inline-player-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.md-inline-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  display: block;
+}
+
+/* ── Poster Overlay with Breathing Light/Dark Effect ── */
+.md-player-poster-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background-size: cover;
+  background-position: center 30%;
+  background-repeat: no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.65s;
+}
+
+.md-player-poster-overlay.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Breathing tint layer alternating between lighter and darker versions of poster */
+.md-poster-breathing-tint {
+  position: absolute;
+  inset: 0;
+  animation: posterBreathPulse 2.8s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes posterBreathPulse {
+  0% {
+    background-color: rgba(7, 7, 15, 0.42);
+    backdrop-filter: brightness(1.12) saturate(1.1);
+  }
+  100% {
+    background-color: rgba(7, 7, 15, 0.88);
+    backdrop-filter: brightness(0.68) saturate(0.85);
+  }
+}
+
+/* ── Option B: Modern Pulsing Play Aura Loader ── */
+.md-player-loader-center {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+.md-aura-ring-pulse {
+  position: relative;
+  width: 82px;
+  height: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.md-aura-inner-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.35) 0%, rgba(236, 72, 153, 0.15) 60%, transparent 80%);
+  border: 1.5px solid rgba(168, 85, 247, 0.65);
+  box-shadow:
+    0 0 24px rgba(168, 85, 247, 0.45),
+    inset 0 0 16px rgba(236, 72, 153, 0.35);
+  animation: auraRipple 2.2s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+}
+
+@keyframes auraRipple {
+  0% {
+    transform: scale(0.92);
+    box-shadow:
+      0 0 14px rgba(168, 85, 247, 0.3),
+      inset 0 0 10px rgba(236, 72, 153, 0.2);
+    border-color: rgba(168, 85, 247, 0.5);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow:
+      0 0 35px rgba(168, 85, 247, 0.65),
+      0 0 50px rgba(236, 72, 153, 0.35),
+      inset 0 0 20px rgba(236, 72, 153, 0.45);
+    border-color: rgba(236, 72, 153, 0.9);
+  }
+  100% {
+    transform: scale(0.92);
+    box-shadow:
+      0 0 14px rgba(168, 85, 247, 0.3),
+      inset 0 0 10px rgba(236, 72, 153, 0.2);
+    border-color: rgba(168, 85, 247, 0.5);
+  }
+}
+
+.md-aura-play-icon {
+  position: relative;
+  z-index: 1;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 3px; /* visual center for play triangle */
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 20px rgba(168, 85, 247, 0.8));
+  animation: playGlyphPulse 2.2s ease-in-out infinite alternate;
+}
+
+@keyframes playGlyphPulse {
+  0% {
+    transform: scale(0.94);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+.md-loader-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(6px);
+  animation: labelGlow 2.8s ease-in-out infinite alternate;
+}
+
+@keyframes labelGlow {
+  0% {
+    border-color: rgba(168, 85, 247, 0.25);
+    color: rgba(255, 255, 255, 0.75);
+  }
+  100% {
+    border-color: rgba(236, 72, 153, 0.55);
+    color: #fff;
+  }
+}
+
+@media (max-width: 600px) {
+  .md-inline-player-header {
+    padding: 12px 14px;
+    gap: 10px;
+    flex-wrap: nowrap;
+  }
+  .md-inline-player-title {
+    font-size: 0.95rem;
+  }
+  .md-inline-player-controls {
+    width: auto;
+    justify-content: flex-end;
+    flex-shrink: 0;
+  }
+  .md-player-action-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
 }
 
 /* ── Video player in modal ── */
@@ -929,4 +1272,254 @@
     padding: 12px 0 24px;
     gap: 12px;
   }
+}
+
+
+/* ============================================================
+   TV SHOW — 3-Step Funnel: Seasons → Episodes → Inline Magnets
+   ============================================================ */
+.md-tv-section {
+  padding: 24px 0 32px;
+}
+
+.md-tv-section .md-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.md-back-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.md-back-btn:hover {
+  background: rgba(168, 85, 247, 0.22);
+  border-color: #a855f7;
+}
+
+.md-ep-count {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 500;
+  margin-left: auto;
+}
+
+/* ── Step 1: Season Grid ── */
+.md-season-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.md-season-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
+  font-family: inherit;
+  color: #fff;
+}
+
+.md-season-card:hover {
+  background: rgba(168, 85, 247, 0.12);
+  border-color: rgba(168, 85, 247, 0.45);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.2);
+}
+
+.md-season-card-num {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.md-season-card-eps {
+  font-size: 0.82rem;
+  color: #c084fc;
+  font-weight: 600;
+}
+
+.md-season-card-year {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+/* ── Step 2: Episode List ── */
+.md-episode-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.md-episode-row {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.md-episode-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.md-episode-row.active {
+  border-left: 3px solid #a855f7;
+  border-color: rgba(168, 85, 247, 0.35);
+  background: rgba(168, 85, 247, 0.04);
+}
+
+.md-episode-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
+  gap: 12px;
+}
+
+.md-episode-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.md-episode-num {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #c084fc;
+  background: rgba(168, 85, 247, 0.16);
+  border-radius: 6px;
+  padding: 3px 8px;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+
+.md-episode-name {
+  font-size: 0.92rem;
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.md-episode-year {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+}
+
+.md-episode-chevron {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.45);
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+/* ── Step 3: Inline Source Panel ── */
+.md-episode-panel {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(0, 0, 0, 0.35);
+  padding: 14px 16px 16px;
+  animation: mdPanelSlide 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes mdPanelSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.md-ep-panel-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  padding: 6px 0;
+}
+
+.md-ep-no-sources {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.85rem;
+  font-style: italic;
+  margin: 4px 0;
+}
+
+.md-ep-source-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.md-ep-source-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 10px 14px;
+  transition: background 0.18s ease;
+}
+
+.md-ep-source-row:hover {
+  background: rgba(168, 85, 247, 0.08);
+  border-color: rgba(168, 85, 247, 0.22);
+}
+
+.md-ep-source-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.md-ep-source-name {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 520px;
+}
+
+.md-ep-source-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }

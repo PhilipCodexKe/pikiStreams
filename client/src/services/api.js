@@ -1,5 +1,5 @@
 // TMDB and Scraper API Service
-export const API_KEY = "ab060bf4b27b23c908e05859d2ef7451";
+export const API_KEY = import.meta.env.VITE_TMDB_API_KEY || "ab060bf4b27b23c908e05859d2ef7451";
 
 export const TMDB_BASE = "https://api.themoviedb.org/3";
 export const IMAGE_BASE_W500 = "https://image.tmdb.org/t/p/w500";
@@ -35,9 +35,39 @@ export async function fetchTrending() {
   return data.results || [];
 }
 
+export async function fetchTrendingTv() {
+  const res = await fetch(`${TMDB_BASE}/trending/tv/week?api_key=${API_KEY}`);
+  if (!res.ok) throw new Error("Failed to fetch trending TV shows");
+  const data = await res.json();
+  return (data.results || []).map((item) => ({ ...item, media_type: "tv" }));
+}
+
+export async function fetchTvDetails(tvId) {
+  const res = await fetch(
+    `${TMDB_BASE}/tv/${tvId}?api_key=${API_KEY}&append_to_response=videos,credits`
+  );
+  if (!res.ok) throw new Error("Failed to fetch TV show details");
+  return await res.json();
+}
+
+export async function fetchTvSeason(tvId, seasonNumber) {
+  const res = await fetch(
+    `${TMDB_BASE}/tv/${tvId}/season/${seasonNumber}?api_key=${API_KEY}`
+  );
+  if (!res.ok) return { episodes: [] };
+  return await res.json();
+}
+
 export async function fetchTopRated() {
   const res = await fetch(`${TMDB_BASE}/movie/top_rated?api_key=${API_KEY}`);
   if (!res.ok) throw new Error("Failed to fetch top rated movies");
+  const data = await res.json();
+  return data.results || [];
+}
+
+export async function fetchPopular() {
+  const res = await fetch(`${TMDB_BASE}/movie/popular?api_key=${API_KEY}`);
+  if (!res.ok) throw new Error("Failed to fetch popular movies");
   const data = await res.json();
   return data.results || [];
 }
@@ -89,6 +119,14 @@ export async function scrapeMovieSources(title, year = null) {
   const queryParams = year ? `?year=${year}` : '';
   const res = await fetch(`/api/scrape/${encodeURIComponent(cleanTitle)}${queryParams}`);
   if (!res.ok) throw new Error("Failed to scrape movie sources");
+  return await res.json();
+}
+
+export async function scrapeTvSources(tmdbId, season = 1, episode = 1, title = "") {
+  const cleanTitle = title.replace(/[^a-zA-Z0-9 ]/g, "").trim();
+  const queryParams = `?season=${season}&episode=${episode}&title=${encodeURIComponent(cleanTitle)}`;
+  const res = await fetch(`/api/scrape/tv/${tmdbId}${queryParams}`);
+  if (!res.ok) throw new Error("Failed to scrape TV episode sources");
   return await res.json();
 }
 
