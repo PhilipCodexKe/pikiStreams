@@ -12,11 +12,9 @@ const MIRRORS = {
         'https://thepiratebay.zone'
     ],
     yts: [
+        'https://yts.mx',
         'https://yts.lt',
-        'https://yts.pm',
-        'https://yts.do',
-        'https://yts.ag',
-        'https://yts.mx'
+        'https://yts.do'
     ],
     '1337x': [
         'https://1337x.to',

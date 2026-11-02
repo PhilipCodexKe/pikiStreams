@@ -1,0 +1,932 @@
+/* ============================================================
+   MOVIE DETAIL PAGE — Cinematic Redesign
+   ============================================================ */
+
+/* ── Page wrapper ── */
+.movie-detail-page {
+  min-height: 100vh;
+  position: relative;
+  background: transparent;
+  /* Pull up so backdrop flows right underneath the transparent fixed navbar */
+  margin-top: calc(-1 * var(--nav-h, 72px));
+}
+
+/* Fixed background wrapper for the entire page */
+.md-fixed-bg-wrap {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Full-bleed fixed backdrop */
+.md-hero-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center 20%;
+  filter: brightness(0.55) saturate(1.25);
+  z-index: 0;
+}
+
+/* Cinematic gradient overlay — reduced dark opacity so artwork is clearly visible */
+.md-hero-gradient {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      to right,
+      rgba(7, 7, 15, 0.9) 0%,
+      rgba(7, 7, 15, 0.72) 42%,
+      rgba(7, 7, 15, 0.25) 70%,
+      rgba(7, 7, 15, 0.05) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      rgba(7, 7, 15, 0.35) 0%,
+      transparent 25%,
+      rgba(7, 7, 15, 0.65) 75%,
+      rgba(7, 7, 15, 0.96) 100%
+    );
+  z-index: 1;
+}
+
+/* Purple atmospheric glow */
+.md-hero-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60%;
+  height: 100%;
+  background: radial-gradient(
+    ellipse at left center,
+    rgba(168, 85, 247, 0.12) 0%,
+    transparent 65%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ============================================================
+   HERO ZONE
+   ============================================================ */
+.md-hero {
+  position: relative;
+  width: 100%;
+  min-height: calc(100vh - 120px);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: transparent;
+  padding-top: var(--nav-h, 72px);
+  box-sizing: border-box;
+  z-index: 1;
+}
+
+/* Left purple accent bar */
+.md-hero-accent-line {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #a855f7 30%,
+    #ec4899 70%,
+    transparent 100%
+  );
+  z-index: 10;
+}
+
+/* Content wrapper */
+.md-hero-content {
+  position: relative;
+  z-index: 10;
+  width: 90%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 0 36px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+/* ============================================================
+   POSTER
+   ============================================================ */
+.md-poster-wrap {
+  flex: 0 0 190px;
+  max-width: 190px;
+  position: relative;
+}
+
+.md-poster {
+  width: 100%;
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 1px rgba(168, 85, 247, 0.18),
+    0 0 60px rgba(168, 85, 247, 0.28),
+    0 24px 56px rgba(0, 0, 0, 0.75);
+  transition:
+    transform 0.35s ease,
+    box-shadow 0.35s ease;
+  display: block;
+}
+
+.md-poster:hover {
+  transform: scale(1.025) translateY(-4px);
+  box-shadow:
+    0 0 0 1px rgba(168, 85, 247, 0.3),
+    0 0 80px rgba(168, 85, 247, 0.38),
+    0 32px 64px rgba(0, 0, 0, 0.8);
+}
+
+/* ============================================================
+   INFO COLUMN
+   ============================================================ */
+.md-info {
+  flex: 1;
+  color: #fff;
+  min-width: 0;
+}
+
+/* Eyebrow: year / type badge */
+.md-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.md-eyebrow-year {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.md-eyebrow-line {
+  width: 28px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+
+.md-type-badge {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    rgba(168, 85, 247, 0.18),
+    rgba(236, 72, 153, 0.18)
+  );
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  color: #c084fc;
+}
+
+/* Title */
+.md-title {
+  font-size: clamp(2rem, 3.8vw, 3rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  margin-bottom: 4px;
+  color: #fff;
+}
+
+/* Tagline */
+.md-tagline {
+  font-size: 0.9rem;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.38);
+  margin-bottom: 12px;
+  letter-spacing: 0.01em;
+}
+
+/* ── Rating row ── */
+.md-rating-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.md-score-box {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 5px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+}
+
+.md-score-num {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+}
+
+.md-score-denom {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.md-stars {
+  display: flex;
+  gap: 2px;
+}
+
+.md-star {
+  font-size: 0.8rem;
+  color: var(--accent3);
+}
+
+.md-star.empty {
+  color: rgba(255, 255, 255, 0.14);
+}
+
+.md-vote-count {
+  font-size: 0.74rem;
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.md-meta-pill {
+  padding: 3px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 20px;
+  font-size: 0.74rem;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 500;
+}
+
+/* ── Genre tags ── */
+.md-genres {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.md-genre-tag {
+  padding: 4px 11px;
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.22);
+  border-radius: 20px;
+  font-size: 0.74rem;
+  color: #c084fc;
+  font-weight: 500;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+
+.md-genre-tag:hover {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.4);
+}
+
+/* ── Storyline ── */
+.md-section-label {
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.3);
+  margin-bottom: 4px;
+}
+
+.md-overview {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 4px;
+  max-width: 600px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+}
+
+.md-overview.expanded {
+  -webkit-line-clamp: unset;
+}
+
+.md-show-more {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 16px;
+  font-family: inherit;
+  transition: color 0.2s;
+}
+
+.md-show-more:hover {
+  color: #c084fc;
+}
+
+/* ── Crew / meta grid ── */
+.md-crew-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px 18px;
+  margin-bottom: 10px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.md-crew-item {
+}
+
+.md-crew-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.28);
+  margin-bottom: 2px;
+}
+
+.md-crew-value {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.35;
+}
+
+/* ── Action buttons ── */
+.md-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.md-btn-watch {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 13px 26px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.4);
+  transition:
+    box-shadow 0.22s,
+    transform 0.22s;
+  letter-spacing: 0.01em;
+}
+
+.md-btn-watch:hover {
+  box-shadow: 0 12px 36px rgba(168, 85, 247, 0.58);
+  transform: translateY(-2px);
+}
+
+.md-btn-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(168, 85, 247, 0.1);
+  backdrop-filter: blur(8px);
+  color: #c084fc;
+  font-weight: 600;
+  font-size: 0.92rem;
+  padding: 13px 22px;
+  border-radius: 12px;
+  border: 1px solid rgba(168, 85, 247, 0.28);
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    transform 0.2s;
+}
+
+.md-btn-download:hover {
+  background: rgba(168, 85, 247, 0.18);
+  border-color: rgba(168, 85, 247, 0.5);
+  transform: translateY(-1px);
+}
+
+.md-btn-trailer {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 600;
+  font-size: 0.92rem;
+  padding: 13px 22px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    transform 0.2s;
+}
+
+.md-btn-trailer:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+/* ============================================================
+   CAST SECTION
+   ============================================================ */
+.md-cast-section {
+  padding: 0 0 8px;
+}
+
+.md-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.md-section-heading-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  background: rgba(168, 85, 247, 0.12);
+  flex-shrink: 0;
+}
+
+.md-section-heading h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+/* Horizontal scroll */
+.md-cast-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: none;
+}
+
+.md-cast-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Cast card */
+.md-cast-card {
+  flex: 0 0 60px;
+  text-align: center;
+  cursor: default;
+}
+
+.md-cast-photo-wrap {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  margin: 0 auto 4px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 4px;
+  position: relative;
+}
+
+.md-cast-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.md-cast-card:hover .md-cast-photo {
+  transform: scale(1.05);
+}
+
+/* Fallback avatar */
+.md-cast-avatar {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  background: linear-gradient(
+    135deg,
+    rgba(168, 85, 247, 0.12),
+    rgba(236, 72, 153, 0.08)
+  );
+}
+
+.md-cast-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.md-cast-character {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================================
+   BELOW-HERO CONTENT AREA
+   ============================================================ */
+.md-below {
+  width: 90%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 0 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Divider ── */
+.md-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(168, 85, 247, 0.18) 30%,
+    rgba(168, 85, 247, 0.18) 70%,
+    transparent
+  );
+}
+
+/* ============================================================
+   STREAM / DOWNLOAD MODAL — upgraded
+   ============================================================ */
+.md-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.md-modal {
+  background: var(--bg-elevated);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 28px;
+  border-radius: 16px;
+  max-width: 700px;
+  width: 92%;
+  max-height: 82vh;
+  overflow-y: auto;
+  color: #fff;
+  position: relative;
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(168, 85, 247, 0.08);
+}
+
+.md-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.1rem;
+  cursor: pointer;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.2s,
+    color 0.2s;
+  font-family: inherit;
+}
+
+.md-modal-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.md-modal-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.md-source-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.md-source-row {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 14px 16px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+
+.md-source-row:hover {
+  background: rgba(168, 85, 247, 0.06);
+  border-color: rgba(168, 85, 247, 0.2);
+}
+
+.md-source-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 3px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.md-source-meta {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.35);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.md-source-quality {
+  color: #c084fc;
+  font-weight: 600;
+}
+
+.md-source-seeds {
+  color: #4ade80;
+  font-weight: 500;
+}
+
+.md-source-btn {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(168, 85, 247, 0.3);
+  transition:
+    box-shadow 0.2s,
+    transform 0.2s;
+}
+
+.md-source-btn:hover {
+  box-shadow: 0 6px 20px rgba(168, 85, 247, 0.5);
+  transform: translateY(-1px);
+}
+
+.md-source-btn.ghost {
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  color: #c084fc;
+  box-shadow: none;
+}
+
+.md-source-btn.ghost:hover {
+  background: rgba(168, 85, 247, 0.18);
+  border-color: rgba(168, 85, 247, 0.45);
+}
+
+/* Spinner center */
+.md-spinner-wrap {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.md-spinner-wrap p {
+  margin-top: 16px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
+}
+
+.md-no-sources {
+  text-align: center;
+  padding: 32px;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* ── Video player in modal ── */
+.md-player-wrap h3 {
+  font-size: 1rem;
+  margin-bottom: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+}
+
+.md-player-wrap video {
+  width: 100%;
+  max-height: 400px;
+  border-radius: 8px;
+  background: #000;
+}
+
+.md-back-btn {
+  margin-top: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+
+.md-back-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* ============================================================
+   RESPONSIVE (Mobile & Tablet)
+   ============================================================ */
+@media (max-width: 860px) {
+  .md-hero {
+    min-height: auto;
+    align-items: flex-start;
+  }
+
+  .md-hero-content {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    padding: 24px 0 32px;
+    gap: 20px;
+  }
+
+  .md-poster-wrap {
+    display: none; /* On mobile, the full backdrop serves as visual header */
+  }
+
+  .md-title {
+    font-size: clamp(2rem, 7vw, 2.6rem);
+  }
+
+  .md-genres,
+  .md-rating-row,
+  .md-actions {
+    justify-content: flex-start;
+  }
+
+  .md-overview {
+    max-width: 100%;
+  }
+
+  .md-crew-grid {
+    grid-template-columns: repeat(2, 1fr);
+    width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .md-hero {
+    /* Gradient tuned specifically for vertical mobile screens */
+    background: transparent;
+  }
+
+  .md-hero-bg {
+    filter: brightness(0.5) saturate(1.25);
+    background-position: center 15%;
+  }
+
+  .md-hero-gradient {
+    background: linear-gradient(
+      to bottom,
+      rgba(7, 7, 15, 0.25) 0%,
+      rgba(7, 7, 15, 0.65) 45%,
+      rgba(7, 7, 15, 0.88) 85%,
+      rgba(7, 7, 15, 0.95) 100%
+    );
+  }
+
+  .md-hero-content {
+    padding: 16px 0 28px;
+    gap: 16px;
+  }
+
+  .md-title {
+    font-size: 2.1rem;
+    line-height: 1.05;
+  }
+
+  .md-tagline {
+    margin-bottom: 4px;
+  }
+
+  .md-rating-row {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .md-stars,
+  .md-vote-count {
+    display: none; /* Streamline mobile score row */
+  }
+
+  .md-genres {
+    margin-bottom: 10px;
+    gap: 6px;
+  }
+
+  .md-genre-tag {
+    padding: 3px 9px;
+    font-size: 0.72rem;
+  }
+
+  .md-overview {
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+
+  .md-crew-grid {
+    margin-bottom: 16px;
+    padding-top: 10px;
+    gap: 8px 14px;
+  }
+
+  .md-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
+  }
+
+  .md-btn-watch,
+  .md-btn-download,
+  .md-btn-trailer {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 18px;
+    font-size: 0.9rem;
+  }
+
+  .md-below {
+    padding: 12px 0 24px;
+    gap: 12px;
+  }
+}

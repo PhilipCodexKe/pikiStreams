@@ -23,53 +23,70 @@ const buildMagnet = (hash, title) => {
 };
 
 const search = async (query) => {
-  try {
-    const mirror = (await getHealthyMirror("yts")) || "https://yts.mx";
-    const url = `${mirror}/api/v2/list_movies.json?query_term=${encodeURIComponent(query)}&limit=10`;
+  const mirrors = [
+    "https://yts.mx",
+    "https://yts.lt",
+    "https://yts.do"
+  ];
 
-    const response = await axios.get(url, {
-      timeout: 5000,
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
-    });
+  let lastError = null;
 
-    const movies = response.data?.data?.movies;
-    if (!movies || !Array.isArray(movies)) return [];
+  for (const mirror of mirrors) {
+    try {
+      const url = `${mirror}/api/v2/list_movies.json?query_term=${encodeURIComponent(query)}&limit=10`;
 
-    const streams = [];
+      const response = await axios.get(url, {
+        timeout: 5000,
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        },
+      });
 
-    for (const movie of movies) {
-      if (!movie.torrents) continue;
+      const movies = response.data?.data?.movies;
+      if (!movies || !Array.isArray(movies)) return [];
 
-      for (const torrent of movie.torrents) {
-        const quality = torrent.quality || "Unknown";
-        const type = torrent.type ? `.${torrent.type}` : "";
-        const releaseTitle = `${movie.title_long || movie.title} [${quality}]${type} [YTS]`;
+      const streams = [];
 
-        streams.push({
-          title: releaseTitle,
-          infoHash: torrent.hash.toLowerCase(),
-          magnet: buildMagnet(torrent.hash, releaseTitle),
-          // Direct .torrent file URL from YTS API — used by the stream server
-          // to skip DHT metadata resolution entirely (TTFB: ~15s → ~2s)
-          torrentUrl: torrent.url || null,
-          quality,
-          size: torrent.size || "Unknown",
-          seeders: parseInt(torrent.seeds, 10) || 0,
-          leechers: parseInt(torrent.peers, 10) || 0,
-          year: movie.year || null,
-          provider: "yts",
-        });
+      for (const movie of movies) {
+        if (!movie.torrents) continue;
+
+        for (const torrent of movie.torrents) {
+          const quality = torrent.quality || "Unknown";
+          const type = torrent.type ? `.${torrent.type}` : "";
+          const releaseTitle = `${movie.title_long || movie.title} [${quality}]${type} [YTS]`;
+          const infoHash = torrent.hash.toLowerCase();
+
+          // Direct .torrent download URL (works across active YTS mirrors)
+          const torrentDownloadUrl = torrent.url || `${mirror}/torrent/download/${infoHash}`;
+
+          streams.push({
+            title: releaseTitle,
+            infoHash,
+            magnet: buildMagnet(torrent.hash, releaseTitle),
+            torrentUrl: torrentDownloadUrl,
+            quality,
+            size: torrent.size || "Unknown",
+            seeders: parseInt(torrent.seeds, 10) || 0,
+            leechers: parseInt(torrent.peers, 10) || 0,
+            year: movie.year || null,
+            provider: "yts",
+          });
+        }
       }
-    }
 
-    return streams;
-  } catch (err) {
-    console.error("[YTS Provider] Error:", err.message);
-    return [];
+      if (streams.length > 0) {
+        console.log(`[YTS Provider] Successfully fetched streams using mirror: ${mirror}`);
+        return streams;
+      }
+    } catch (err) {
+      lastError = err;
+      console.warn(`[YTS Provider] Mirror ${mirror} failed (${err.code || err.message}). Trying next mirror...`);
+    }
   }
+
+  console.error("[YTS Provider] All YTS mirrors failed. Last error:", lastError?.message);
+  return [];
 };
 
 module.exports = {

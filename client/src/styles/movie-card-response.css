@@ -35,7 +35,7 @@
     box-sizing: border-box !important;
   }
 
-  .poster {
+  .content-area .poster {
     width: calc(50% - 6px) !important;
     display: flex;
     justify-content: center;
@@ -43,7 +43,7 @@
     flex-shrink: 0;
   }
 
-  .poster img {
+  .content-area .poster img {
     width: 100% !important;
     max-width: 100%;
     height: auto;

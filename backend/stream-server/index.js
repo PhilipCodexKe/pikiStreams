@@ -109,29 +109,89 @@ function getMimeType(filename) {
 
 function getVideoFile(torrent) {
   if (!torrent.files || !torrent.files.length) return null;
-  const byExt = torrent.files.find((f) =>
-    VIDEO_EXTS.some((ext) => f.name.toLowerCase().endsWith(ext)),
-  );
-  return byExt || torrent.files.slice().sort((a, b) => b.length - a.length)[0];
+
+  console.log(`[Stream DEBUG] Torrent files found (${torrent.files.length}):`);
+  for (const f of torrent.files) {
+    console.log(`  - "${f.name}" (${(f.length / (1024 * 1024)).toFixed(2)} MB)`);
+  }
+
+  // 1. Filter only genuine video files matching known video extensions
+  const videoFiles = torrent.files.filter((f) => {
+    const name = f.name.toLowerCase();
+    return VIDEO_EXTS.some((ext) => name.endsWith(ext));
+  });
+
+  if (videoFiles.length > 0) {
+    // Pick the largest video file (ensures we get the actual full feature film, not a sample clip)
+    const primaryVideo = videoFiles.slice().sort((a, b) => b.length - a.length)[0];
+    console.log(`[Stream DEBUG] Selected primary video: "${primaryVideo.name}" (${(primaryVideo.length / (1024 * 1024)).toFixed(2)} MB)`);
+    return primaryVideo;
+  }
+
+  console.error("[Stream ERROR] No valid video file found among torrent files!");
+  return null;
 }
 
 // ─── Phase 2A: .torrent buffer fetch ─────────────────────────────────────────
 /**
  * Download a .torrent file from a URL and return its Buffer.
- * YTS provides these as direct HTTPS links (e.g. https://yts.mx/torrent/download/HASH).
+ * YTS provides these directly (e.g. https://yts.mx/torrent/download/HASH).
  * Fetching the .torrent buffer skips DHT entirely; client.add(buffer) resolves
- * metadata in <1s instead of the typical 5-30s DHT cold start.
+ * metadata in <1s instead of the typical 30-60s DHT cold start.
  */
 async function fetchTorrentBuffer(torrentUrl) {
-  const response = await axios.get(torrentUrl, {
-    responseType: "arraybuffer",
-    timeout: 10_000,
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-    },
-  });
-  return Buffer.from(response.data);
+  const candidateUrls = [];
+
+  // Extract hash if present in URL
+  let hash = null;
+  const match = torrentUrl.match(/([a-fA-F0-9]{40})/);
+  if (match) {
+    hash = match[1].toLowerCase();
+  }
+
+  // Prioritize official YTS download mirrors that don't block with HTTP 436
+  if (hash) {
+    candidateUrls.push(
+      `https://yts.mx/torrent/download/${hash}`,
+      `https://yts.lt/torrent/download/${hash}`,
+      `https://yts.pm/torrent/download/${hash}`,
+      `https://yts.do/torrent/download/${hash}`,
+      `https://yts.ag/torrent/download/${hash}`
+    );
+  }
+
+  // Also include original URL if different
+  if (!candidateUrls.includes(torrentUrl)) {
+    candidateUrls.push(torrentUrl);
+  }
+
+  let lastErr = null;
+  for (const url of candidateUrls) {
+    try {
+      const response = await axios.get(url, {
+        responseType: "arraybuffer",
+        timeout: 5_000,
+        maxRedirects: 5,
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml,application/xml,application/x-bittorrent,*/*;q=0.9",
+          Referer: "https://yts.mx/",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+      });
+
+      const buf = Buffer.from(response.data);
+      // Valid .torrent files always start with 'd' (0x64 in hex)
+      if (buf.length > 50 && buf[0] === 0x64) {
+        return buf;
+      }
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+
+  throw lastErr || new Error("Failed to download valid .torrent buffer");
 }
 
 // ─── Core: add torrent + wait for metadata ────────────────────────────────────
@@ -304,19 +364,19 @@ app.post("/stream/init", async (req, res) => {
 
     // ── 3. New torrent ────────────────────────────────────────────────────────
     let source = magnet; // default: DHT via magnet
+    let isBuffer = false;
 
-    // Phase 2A: if torrentUrl is provided and actually reachable, fetch .torrent buffer
-    // Skip if it points to known-dead domains or returns 404
-    if (
-      torrentUrl &&
-      !torrentUrl.includes("yts.gg") &&
-      !torrentUrl.includes("yts.mx")
-    ) {
+    // Phase 2A: If torrentUrl is provided, or if this is a YTS torrent hash,
+    // fetch the .torrent buffer directly to bypass the slow DHT resolution.
+    const downloadTargetUrl = torrentUrl || (infoHash ? `https://yts.mx/torrent/download/${infoHash}` : null);
+
+    if (downloadTargetUrl) {
       try {
-        console.log(`[Init] Fetching .torrent buffer from: ${torrentUrl}`);
-        source = await fetchTorrentBuffer(torrentUrl);
+        console.log(`[Init] Fetching .torrent buffer: ${downloadTargetUrl}`);
+        source = await fetchTorrentBuffer(downloadTargetUrl);
+        isBuffer = true;
         console.log(
-          `[Init] .torrent buffer fetched (${source.length} bytes) — skipping DHT`,
+          `[Init] .torrent buffer fetched (${source.length} bytes) — bypassing DHT metadata wait!`,
         );
       } catch (bufErr) {
         console.warn(
@@ -367,7 +427,7 @@ app.post("/stream/init", async (req, res) => {
       `[Init] Ready → ${torrent.infoHash} | ` +
         `${torrent.files.length} file(s) | ` +
         `${torrent.numPeers} peer(s) | ` +
-        `source: ${torrentUrl ? ".torrent buffer" : "DHT magnet"}`,
+        `source: ${isBuffer ? ".torrent buffer (instant)" : "DHT magnet"}`,
     );
 
     return res.json({ infoHash: torrent.infoHash });
@@ -415,6 +475,39 @@ app.get("/stream/:infoHash", async (req, res) => {
 
   const file = getVideoFile(torrent);
   if (!file) return res.status(404).send("No video file found in torrent");
+
+  // ── Prioritize Initial Video Playback Pieces ──────────────────────────────
+  // WebTorrent piece selection: aggressively demand the first 10MB (head)
+  // and last 5MB (tail, for MP4 moov atom if placed at the end of the file).
+  // Priority 1 is the highest urgency level in WebTorrent's swarm scheduler.
+  try {
+    if (typeof file.select === "function") {
+      // Deselect unneeded files (images, txt, nfo, exe) to free wire bandwidth,
+      // but keep subtitles (.srt, .vtt) enabled so captions stay available!
+      torrent.files.forEach((other) => {
+        if (other !== file && typeof other.deselect === "function") {
+          const name = other.name.toLowerCase();
+          const isSubtitle = /\.(srt|vtt|sub|idx)$/i.test(name);
+          if (!isSubtitle) {
+            other.deselect();
+          }
+        }
+      });
+
+      // Calculate pieces for the first 15 MB and the last 10 MB
+      const pieceLen = torrent.pieceLength || 2 * 1024 * 1024;
+      const headPieces = Math.min(torrent.pieces.length - 1, Math.ceil((15 * 1024 * 1024) / pieceLen));
+      const tailStartPiece = Math.max(0, torrent.pieces.length - Math.ceil((10 * 1024 * 1024) / pieceLen));
+
+      // Prioritize the head (pieces 0 to headPieces) with priority 1
+      file.select(0, headPieces, 1);
+
+      // Prioritize the tail (for moov atom metadata) with priority 1
+      file.select(tailStartPiece, torrent.pieces.length - 1, 1);
+    }
+  } catch (pErr) {
+    console.warn("[Stream] Piece prioritization note:", pErr.message);
+  }
 
   const ext = getFileExt(file.name);
   const isMkv = ext === ".mkv";
@@ -520,7 +613,7 @@ async function init() {
   const { default: WebTorrent } = await import("webtorrent");
 
   client = new WebTorrent({
-    maxConns: 55,
+    maxConns: 80, // Allow more concurrent peers for faster unchoking
     uploadLimit: -1, // Do NOT set to 0: BitTorrent peers immediately choke clients that advertise 0 upload
   });
 

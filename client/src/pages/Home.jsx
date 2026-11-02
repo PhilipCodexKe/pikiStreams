@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import HeroBanner from '../components/HeroBanner';
+import SpotlightRow from '../components/SpotlightRow';
 import MovieSection from '../components/MovieSection';
 import { fetchTrending, fetchTopRated, fetchLatest, fetchUpcoming } from '../services/api';
 
 export default function Home() {
-  const [trending, setTrending] = useState([]);
-  const [topRated, setTopRated] = useState([]);
-  const [latest, setLatest] = useState([]);
-  const [upcoming, setUpcoming] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [trending,  setTrending]  = useState([]);
+  const [topRated,  setTopRated]  = useState([]);
+  const [latest,    setLatest]    = useState([]);
+  const [upcoming,  setUpcoming]  = useState([]);
+  const [loading,   setLoading]   = useState(true);
 
   useEffect(() => {
     async function loadData() {
@@ -42,12 +43,42 @@ export default function Home() {
 
   return (
     <div id="home-content">
+      {/* Phase 2 — Cinematic Hero */}
       <HeroBanner movies={trending} />
-      <div style={{ padding: '20px 0' }}>
-        <MovieSection id="trending-section" title="Trending Now" movies={trending} scrollable />
-        <MovieSection id="top-rated-section" title="Top Rated" movies={topRated} scrollable />
-        <MovieSection id="latest-section" title="Latest Movies" movies={latest} scrollable />
-        <MovieSection id="upcoming-section" title="Upcoming Releases" movies={upcoming} scrollable />
+
+      {/* Phase 3 — Spotlight cards (top 2 trending as landscape banners) */}
+      <SpotlightRow movies={trending} />
+
+      {/* Movie sections */}
+      <div className="home-sections">
+        <MovieSection
+          id="trending-section"
+          title="Trending Now"
+          icon="🔥"
+          movies={trending}
+          scrollable
+        />
+        <MovieSection
+          id="top-rated-section"
+          title="Top Rated"
+          icon="⭐"
+          movies={topRated}
+          scrollable
+        />
+        <MovieSection
+          id="latest-section"
+          title="Latest Movies"
+          icon="🆕"
+          movies={latest}
+          scrollable
+        />
+        <MovieSection
+          id="upcoming-section"
+          title="Upcoming Releases"
+          icon="🗓️"
+          movies={upcoming}
+          scrollable
+        />
       </div>
     </div>
   );

@@ -15,34 +15,48 @@ export default function MovieCard({ movie, isClickable = true }) {
     ? `${IMAGE_BASE_W500}${movie.poster_path}`
     : 'https://via.placeholder.com/300x450?text=No+Poster';
 
-  const year = movie.release_date ? movie.release_date.split('-')[0] : 'N/A';
+  const year     = movie.release_date ? movie.release_date.split('-')[0] : 'N/A';
   const numRating = movie.vote_average ? Number(movie.vote_average.toFixed(1)) : 0;
-  const rating = movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A';
+  const rating    = movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A';
 
   const rateClass =
     numRating >= 7 ? 'rate-good' : numRating >= 5 ? 'rate-mid' : 'rate-bad';
 
   const handleClick = () => {
-    if (isClickable) {
-      navigate(`/movie/${movie.id}`);
-    }
+    if (isClickable) navigate(`/movie/${movie.id}`);
   };
 
   return (
     <article
-      className={`movie-card ${!isClickable ? 'unclickable' : ''}`}
+      className={`movie-card${!isClickable ? ' unclickable' : ''}`}
       onClick={handleClick}
       style={{ cursor: isClickable ? 'pointer' : 'default' }}
     >
+      {/* ── Poster ── */}
       <div className="poster-wrap">
         <img className="poster" src={poster} alt={movie.title} loading="lazy" />
+
+        {/* Rating badge */}
         <span className={`rating-badge ${rateClass}`}>{rating}</span>
+
+        {/* Phase 4: Purple play-button hover overlay */}
+        {isClickable && (
+          <div className="card-hover-overlay">
+            <div className="card-play-btn" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">
+                <polygon points="5,3 19,12 5,21" />
+              </svg>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* ── Card body ── */}
       <div className="card-body">
         <h3 className="movie-title">{movie.title}</h3>
         <div className="meta">
           {genres && <span className="genre">{genres}</span>}
-          {genres && year && <span className="dot" aria-hidden="true" style={{ margin: '0 4px' }}>•</span>}
+          {genres && <span className="dot" aria-hidden="true">•</span>}
           <span className="year">{year}</span>
         </div>
       </div>

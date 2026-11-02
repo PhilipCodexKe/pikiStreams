@@ -23,7 +23,7 @@
   height: 50px;
   border: 3px solid rgba(255, 255, 255, 0.1);
   border-radius: 50%;
-  border-top-color: #ffc107; /* Accent color */
+  border-top-color: #a855f7; /* Phase 1: Purple accent */
   animation: spin 1s ease-in-out infinite;
 }
 

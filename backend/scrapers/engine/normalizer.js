@@ -8,8 +8,8 @@
 // ============================================================================
 // STREAMING SAFETY FILTERS
 // ============================================================================
-const MIN_SIZE_BYTES = 350 * 1024 * 1024;           // 350 MB: below = fake/malware/sample
-const MAX_SIZE_BYTES = 5.5 * 1024 * 1024 * 1024;    // 5.5 GB: above = un-streamable remux/multi-pack
+const MIN_SIZE_BYTES = 250 * 1024 * 1024;           // 250 MB: below = sample/malware
+const MAX_SIZE_BYTES = 25.0 * 1024 * 1024 * 1024;   // 25 GB: allows high-bitrate 1080p and 4K encodes
 
 // Dangerous title keywords that indicate non-movie or malicious content
 const BLOCKED_KEYWORDS = [
@@ -25,7 +25,10 @@ const BLOCKED_KEYWORDS = [
     'adult',
     'porn',
     'sample only',
-    'trailer only'
+    'trailer only',
+    'yts.bz',
+    'yts.gg',
+    'yifystatus'
 ];
 
 // Low-quality cam recordings not suitable for streaming
@@ -166,14 +169,15 @@ const normalizeAndDeduplicate = (streamsList, defaultProvider = 'unknown') => {
             continue;
         }
 
-        // Keep highest-seeder version for duplicate hashes
-        if (map.has(infoHash)) {
-            const existing = map.get(infoHash);
+        // Use a composite key of infoHash + quality so that 720p, 1080p, 2160p are ALL preserved!
+        const uniqueKey = `${infoHash}_${normalizedStream.quality}`;
+        if (map.has(uniqueKey)) {
+            const existing = map.get(uniqueKey);
             if (normalizedStream.seeders > existing.seeders) {
-                map.set(infoHash, normalizedStream);
+                map.set(uniqueKey, normalizedStream);
             }
         } else {
-            map.set(infoHash, normalizedStream);
+            map.set(uniqueKey, normalizedStream);
         }
     }
 

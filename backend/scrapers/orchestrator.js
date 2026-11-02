@@ -47,64 +47,85 @@ const searchMovieStreams = async (title, year = null, forceRefresh = false) => {
 
     const searchQuery = year ? `${cleanTitle} ${year}` : cleanTitle;
     const allFoundStreams = [];
-    const providersNeedingPlaywright = [];
 
-    // 2. Fast Path: Run Cheerio across all providers in parallel
-    const cheerioPromises = providers.map(async (provider) => {
+    // 2. Priority Phase: Call YTS API first
+    const ytsProvider = providers.find((p) => p.name === 'yts');
+    if (ytsProvider && ytsProvider.searchCheerio) {
         try {
-            if (provider.searchCheerio) {
-                const results = await provider.searchCheerio(searchQuery);
-                if (results && Array.isArray(results) && results.length > 0) {
-                    console.log(`[Orchestrator] Provider [${provider.name}] (Cheerio) returned ${results.length} streams.`);
-                    allFoundStreams.push(...results);
-                    return;
-                }
+            console.log(`[Orchestrator] Calling YTS API first for: "${searchQuery}"`);
+            const ytsResults = await ytsProvider.searchCheerio(searchQuery);
+            if (ytsResults && Array.isArray(ytsResults) && ytsResults.length > 0) {
+                console.log(`[Orchestrator] YTS API found ${ytsResults.length} stream(s) instantly.`);
+                allFoundStreams.push(...ytsResults);
             }
-            if (provider.searchPlaywright) {
-                providersNeedingPlaywright.push(provider);
-            }
-        } catch (err) {
-            console.warn(`[Orchestrator] Provider [${provider.name}] Cheerio failed:`, err.message);
-            if (provider.searchPlaywright) {
-                providersNeedingPlaywright.push(provider);
-            }
+        } catch (ytsErr) {
+            console.warn('[Orchestrator] YTS primary call failed:', ytsErr.message);
         }
-    });
+    }
 
-    await Promise.allSettled(cheerioPromises);
+    // 3. Fallback Phase: If YTS didn't return streams (or fewer than 2), query other providers
+    if (allFoundStreams.length < 2) {
+        console.log(`[Orchestrator] Streams from YTS (${allFoundStreams.length}) insufficient. Triggering fallback scrapers...`);
+        const fallbackProviders = providers.filter((p) => p.name !== 'yts');
+        const providersNeedingPlaywright = [];
 
-    // 3. Smart Cutoff:
-    // If Cheerio already returned 3 or more streams, skip heavy Playwright browser
-    const shouldSkipPlaywright = allFoundStreams.length >= 3;
-
-    if (shouldSkipPlaywright) {
-        console.log(`[Orchestrator] Cheerio fast path yielded ${allFoundStreams.length} streams. Skipping slow Playwright fallback!`);
-    } else if (providersNeedingPlaywright.length > 0) {
-        console.log(`[Orchestrator] Cheerio streams low (${allFoundStreams.length}). Running Playwright fallback for: ${providersNeedingPlaywright.map(p => p.name).join(', ')}`);
-        let context = null;
-        try {
-            const browser = await getBrowser();
-            context = await browser.newContext({
-                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            });
-            applyPopupShield(context);
-
-            for (const provider of providersNeedingPlaywright) {
-                try {
-                    const results = await provider.searchPlaywright(context, searchQuery);
-                    if (results && results.length > 0) {
-                        console.log(`[Orchestrator] Provider [${provider.name}] (Playwright) returned ${results.length} streams.`);
+        const cheerioPromises = fallbackProviders.map(async (provider) => {
+            try {
+                if (provider.searchCheerio) {
+                    const results = await provider.searchCheerio(searchQuery);
+                    if (results && Array.isArray(results) && results.length > 0) {
+                        console.log(`[Orchestrator] Provider [${provider.name}] (Cheerio) returned ${results.length} streams.`);
                         allFoundStreams.push(...results);
+                        return;
                     }
-                } catch (pErr) {
-                    console.error(`[Orchestrator] Provider [${provider.name}] Playwright error:`, pErr.message);
+                }
+                if (provider.searchPlaywright) {
+                    providersNeedingPlaywright.push(provider);
+                }
+            } catch (err) {
+                console.warn(`[Orchestrator] Provider [${provider.name}] Cheerio failed:`, err.message);
+                if (provider.searchPlaywright) {
+                    providersNeedingPlaywright.push(provider);
                 }
             }
-        } catch (bErr) {
-            console.error('[Orchestrator] Playwright launch error:', bErr.message);
-        } finally {
-            if (context) await context.close().catch(() => {});
+        });
+
+        await Promise.allSettled(cheerioPromises);
+
+        // Smart Cutoff for heavy Playwright browser
+        const shouldSkipPlaywright = allFoundStreams.length >= 3;
+
+        if (shouldSkipPlaywright) {
+            console.log(`[Orchestrator] Cheerio fast path yielded ${allFoundStreams.length} streams. Skipping slow Playwright fallback!`);
+        } else if (providersNeedingPlaywright.length > 0) {
+            console.log(`[Orchestrator] Streams still low (${allFoundStreams.length}). Running Playwright fallback for: ${providersNeedingPlaywright.map(p => p.name).join(', ')}`);
+            let context = null;
+            try {
+                const browser = await getBrowser();
+                context = await browser.newContext({
+                    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                });
+                applyPopupShield(context);
+
+                for (const provider of providersNeedingPlaywright) {
+                    try {
+                        const results = await provider.searchPlaywright(context, searchQuery);
+                        if (results && results.length > 0) {
+                            console.log(`[Orchestrator] Provider [${provider.name}] (Playwright) returned ${results.length} streams.`);
+                            allFoundStreams.push(...results);
+                        }
+                    } catch (pErr) {
+                        console.error(`[Orchestrator] Provider [${provider.name}] Playwright error:`, pErr.message);
+                    }
+                }
+            } catch (bErr) {
+                console.error('[Orchestrator] Playwright launch error:', bErr.message);
+            } finally {
+                if (context) await context.close().catch(() => {});
+            }
         }
+    } else {
+        console.log(`[Orchestrator] YTS provided sufficient streams (${allFoundStreams.length}). Skipping all other scrapers!`);
     }
 
     // 4. Normalize, deduplicate by infoHash, and rank by seeders

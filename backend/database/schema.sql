@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS streams (
     leechers INT DEFAULT 0,
     magnet TEXT NOT NULL,
     provider TEXT NOT NULL,              -- 'thepiratebay', 'yts', '1337x'
+    torrent_url TEXT,                    -- Direct .torrent download URL (e.g. from YTS to skip DHT)
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
