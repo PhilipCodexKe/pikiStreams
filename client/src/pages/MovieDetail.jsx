@@ -12,6 +12,7 @@ import {
   scrapeMovieSources,
   scrapeTvSources,
   initStream,
+  fetchSubtitles,
   IMAGE_BASE_ORIGINAL,
   IMAGE_BASE_W500,
   IMAGE_BASE_W300,
@@ -26,8 +27,9 @@ export default function MovieDetail() {
   const location = useLocation();
 
   // Detect TV show mode via ?type=tv query param or /tv/ route
-  const isTv = new URLSearchParams(location.search).get("type") === "tv"
-    || location.pathname.startsWith("/tv/");
+  const isTv =
+    new URLSearchParams(location.search).get("type") === "tv" ||
+    location.pathname.startsWith("/tv/");
 
   const [movie, setMovie] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
@@ -58,6 +60,12 @@ export default function MovieDetail() {
   const [isPlayerActive, setIsPlayerActive] = useState(false);
   const [streamLoading, setStreamLoading] = useState(false);
   const [isVideoReady, setIsVideoReady] = useState(false);
+
+  // Subtitles state
+  const [subtitles, setSubtitles] = useState([]);
+  const [selectedSubUrl, setSelectedSubUrl] = useState(null);
+  const [isSubMenuOpen, setIsSubMenuOpen] = useState(false);
+  const [subSize, setSubSize] = useState("medium"); // "small" (0.9rem), "medium" (1.25rem), "large" (1.6rem)
 
   const playerRef = useRef(null);
   const episodesRef = useRef(null);
@@ -98,7 +106,9 @@ export default function MovieDetail() {
             ]);
           setMovie(tvData);
           // Filter out season 0 (Specials) for cleaner UX
-          const validSeasons = (tvData.seasons || []).filter((s) => s.season_number > 0);
+          const validSeasons = (tvData.seasons || []).filter(
+            (s) => s.season_number > 0,
+          );
           setTvSeasons(validSeasons);
           setSelectedSeason(validSeasons[0]?.season_number || 1);
           setEpisodes(season1Data?.episodes || []);
@@ -181,7 +191,11 @@ export default function MovieDetail() {
     // Open the panel (show spinner immediately)
     setEpisodePanels((prev) => ({
       ...prev,
-      [epId]: { open: true, loading: !panel?.sources, sources: panel?.sources || null },
+      [epId]: {
+        open: true,
+        loading: !panel?.sources,
+        sources: panel?.sources || null,
+      },
     }));
 
     // If we already fetched sources for this episode, don't re-fetch
@@ -189,7 +203,14 @@ export default function MovieDetail() {
 
     try {
       const showTitle = movie?.name || movie?.original_name || "";
-      const res = await scrapeTvSources(id, selectedSeason, episode.episode_number, showTitle);
+      const imdbId = movie?.external_ids?.imdb_id || movie?.imdb_id || null;
+      const res = await scrapeTvSources(
+        id,
+        selectedSeason,
+        episode.episode_number,
+        showTitle,
+        imdbId,
+      );
       setEpisodePanels((prev) => ({
         ...prev,
         [epId]: { open: true, loading: false, sources: res?.data || [] },
@@ -212,7 +233,13 @@ export default function MovieDetail() {
       const releaseYear = movie.release_date
         ? parseInt(movie.release_date.split("-")[0], 10)
         : null;
-      const res = await scrapeMovieSources(movie.title, releaseYear);
+      const imdbId = movie.imdb_id || movie.external_ids?.imdb_id || null;
+      const res = await scrapeMovieSources(
+        movie.title,
+        releaseYear,
+        movie.id,
+        imdbId,
+      );
       if (res && res.data) {
         setSources(res.data);
       }
@@ -223,7 +250,12 @@ export default function MovieDetail() {
     }
   };
 
-  const handleStartStream = async (magnet, infoHash, torrentUrl) => {
+  const handleStartStream = async (
+    magnet,
+    infoHash,
+    torrentUrl,
+    streamOptions = {},
+  ) => {
     setIsPlayerActive(true); // Player stays visible on page immediately
     setStreamLoading(true);
     setIsVideoReady(false);
@@ -241,8 +273,59 @@ export default function MovieDetail() {
         magnet,
         infoHash,
         torrentUrl,
+        streamOptions,
       );
-      setActiveStreamUrl(`/stream/${resolvedHash}`);
+      const queryParams = new URLSearchParams();
+      if (streamOptions.fileIdx !== undefined && streamOptions.fileIdx !== null)
+        queryParams.append("fileIdx", streamOptions.fileIdx);
+      if (streamOptions.season !== undefined && streamOptions.season !== null)
+        queryParams.append("season", streamOptions.season);
+      if (streamOptions.episode !== undefined && streamOptions.episode !== null)
+        queryParams.append("episode", streamOptions.episode);
+      const qs = queryParams.toString() ? `?${queryParams.toString()}` : "";
+      setActiveStreamUrl(`/stream/${resolvedHash}${qs}`);
+
+      // Auto-fetch English subtitles from OpenSubtitles
+      let imdbId = movie?.imdb_id || movie?.external_ids?.imdb_id || null;
+
+      // If TV show doesn't have imdbId on root, fetch external_ids
+      const ensureImdbAndFetchSubs = async () => {
+        if (!imdbId && isTv) {
+          try {
+            const extRes = await fetch(
+              `https://api.themoviedb.org/3/tv/${id}/external_ids?api_key=ab060bf4b27b23c908e05859d2ef7451`,
+            );
+            const extData = await extRes.json();
+            imdbId = extData?.imdb_id;
+          } catch {}
+        }
+
+        if (imdbId) {
+          fetchSubtitles({
+            imdbId,
+            season: streamOptions.season,
+            episode: streamOptions.episode,
+            lang: "eng",
+          })
+            .then((subsList) => {
+              if (subsList && subsList.length > 0) {
+                setSubtitles(subsList);
+                setSelectedSubUrl(
+                  `/api/subtitles/vtt?url=${encodeURIComponent(subsList[0].downloadUrl)}`,
+                );
+              } else {
+                setSubtitles([]);
+                setSelectedSubUrl(null);
+              }
+            })
+            .catch(() => {
+              setSubtitles([]);
+              setSelectedSubUrl(null);
+            });
+        }
+      };
+
+      ensureImdbAndFetchSubs();
     } catch (err) {
       console.error("[Stream] Init failed:", err);
       alert(`Could not connect to stream:\n${err.message}`);
@@ -302,16 +385,20 @@ export default function MovieDetail() {
   const studio =
     movie.production_companies && movie.production_companies.length > 0
       ? movie.production_companies[0].name
-      : (isTv && movie.networks?.length > 0 ? movie.networks[0].name : null);
+      : isTv && movie.networks?.length > 0
+        ? movie.networks[0].name
+        : null;
 
-  const hours = Math.floor((movie.runtime || movie.episode_run_time?.[0] || 0) / 60);
+  const hours = Math.floor(
+    (movie.runtime || movie.episode_run_time?.[0] || 0) / 60,
+  );
   const minutes = (movie.runtime || movie.episode_run_time?.[0] || 0) % 60;
   const runtimeFormatted =
     (movie.runtime || movie.episode_run_time?.[0]) > 0
       ? `${hours}h ${minutes}m`
       : isTv
-      ? `${movie.number_of_seasons || "?"} Season${(movie.number_of_seasons || 0) > 1 ? "s" : ""}`
-      : "Runtime N/A";
+        ? `${movie.number_of_seasons || "?"} Season${(movie.number_of_seasons || 0) > 1 ? "s" : ""}`
+        : "Runtime N/A";
 
   const numRating = movie.vote_average
     ? Number(movie.vote_average.toFixed(1))
@@ -355,7 +442,9 @@ export default function MovieDetail() {
             <div className="md-eyebrow">
               <span className="md-eyebrow-year">{releaseYear}</span>
               <span className="md-eyebrow-line" />
-              <span className="md-type-badge">{isTv ? "TV Series" : "Feature Film"}</span>
+              <span className="md-type-badge">
+                {isTv ? "TV Series" : "Feature Film"}
+              </span>
             </div>
 
             <h1 className="md-title">{displayTitle}</h1>
@@ -462,10 +551,15 @@ export default function MovieDetail() {
                     });
                   }}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
                     <polygon points="5,3 19,12 5,21" />
                   </svg>
-                  Select Episode & Stream
+                  Watch Now
                 </button>
               ) : (
                 <>
@@ -482,7 +576,12 @@ export default function MovieDetail() {
                       }
                     }}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
                       <polygon points="5,3 19,12 5,21" />
                     </svg>
                     {isPlayerActive ? "Jump to Player" : "Watch Movie (Stream)"}
@@ -491,7 +590,16 @@ export default function MovieDetail() {
                     className="md-btn-download"
                     onClick={() => handleFetchSources("download")}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                       <polyline points="7 10 12 15 17 10" />
                       <line x1="12" y1="15" x2="12" y2="3" />
@@ -501,7 +609,16 @@ export default function MovieDetail() {
                 </>
               )}
               <button className="md-btn-trailer" onClick={handleOpenTrailer}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <polygon points="5 3 19 12 5 21 5 3" />
                 </svg>
                 Watch Trailer
@@ -604,39 +721,64 @@ export default function MovieDetail() {
                             </div>
                           ) : !panel.sources || panel.sources.length === 0 ? (
                             <p className="md-ep-no-sources">
-                              No torrent sources currently found for this episode on EZTV.
+                              No torrent sources currently found for this
+                              episode on EZTV.
                             </p>
                           ) : (
                             <div className="md-ep-source-list">
                               {panel.sources.map((src, i) => {
                                 const quality =
-                                  src.quality !== "Unknown" ? src.quality : null;
-                                const releaseYear = src.title?.match(
-                                  /\b(19|20)\d{2}\b/
-                                )?.[0];
-                                const cleanName = (src.title || "Unknown Release")
+                                  src.quality !== "Unknown"
+                                    ? src.quality
+                                    : null;
+                                const size =
+                                  src.size && src.size !== "Unknown"
+                                    ? src.size
+                                    : null;
+                                const seeders =
+                                  src.seeders !== undefined &&
+                                  src.seeders !== null
+                                    ? `${src.seeders} seeds`
+                                    : null;
+                                const releaseYear =
+                                  src.title?.match(/\b(19|20)\d{2}\b/)?.[0];
+                                const cleanName = (
+                                  src.title || "Unknown Release"
+                                )
                                   .replace(
                                     /\.(mkv|mp4|avi|x264|x265|BluRay|WEBRip|HDTV|WEB-DL|HEVC|H\.264|H\.265)\S*/gi,
-                                    ""
+                                    "",
                                   )
                                   .trim();
                                 const magnetUri = src.magnet || src.link;
                                 return (
                                   <div key={i} className="md-ep-source-row">
                                     <div className="md-ep-source-info">
-                                      {quality && (
-                                        <span className="md-source-quality">
-                                          {quality}
-                                        </span>
-                                      )}
+                                      <div className="md-ep-source-badges">
+                                        {quality && (
+                                          <span className="md-source-quality">
+                                            {quality}
+                                          </span>
+                                        )}
+                                        {size && (
+                                          <span className="md-source-size">
+                                            {size}
+                                          </span>
+                                        )}
+                                        {seeders && (
+                                          <span className="md-source-seeds">
+                                            {seeders}
+                                          </span>
+                                        )}
+                                        {releaseYear && (
+                                          <span className="md-episode-year">
+                                            · {releaseYear}
+                                          </span>
+                                        )}
+                                      </div>
                                       <span className="md-ep-source-name">
                                         {cleanName}
                                       </span>
-                                      {releaseYear && (
-                                        <span className="md-episode-year">
-                                          · {releaseYear}
-                                        </span>
-                                      )}
                                     </div>
                                     <div className="md-ep-source-actions">
                                       <button
@@ -645,7 +787,12 @@ export default function MovieDetail() {
                                           handleStartStream(
                                             magnetUri,
                                             src.infoHash,
-                                            src.torrentUrl || null
+                                            src.torrentUrl || null,
+                                            {
+                                              fileIdx: src.fileIdx,
+                                              season: selectedSeason,
+                                              episode: ep.episode_number,
+                                            },
                                           )
                                         }
                                       >
@@ -670,6 +817,229 @@ export default function MovieDetail() {
                 })}
               </div>
             )}
+          </section>
+        )}
+
+        {/* Embedded Video Player Section */}
+        {isPlayerActive && (
+          <section ref={playerRef} className="md-inline-player-section">
+            <div className="md-inline-player-header">
+              <div className="md-inline-player-title-wrap">
+                <h3 className="md-inline-player-title">{displayTitle}</h3>
+              </div>
+              <div className="md-inline-player-controls">
+                {isTv ? (
+                  <button
+                    className="md-player-action-btn"
+                    onClick={() => {
+                      episodesRef.current?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
+                    }}
+                    title="View other episodes"
+                  >
+                    Other Episodes
+                  </button>
+                ) : (
+                  <button
+                    className="md-player-action-btn"
+                    onClick={() => handleFetchSources("stream")}
+                    title="Switch stream source"
+                  >
+                    Change Source
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="md-inline-player-wrapper">
+              {/* Poster Breathing + Pulsing Play Aura Overlay */}
+              <div
+                className={`md-player-poster-overlay ${
+                  isVideoReady ? "is-hidden" : ""
+                }`}
+                style={{
+                  backgroundImage: `url(${poster})`,
+                }}
+              >
+                {/* Dark/Light breathing tint layer */}
+                <div className="md-poster-breathing-tint" />
+
+                {/* Option B: Modern Pulsing Play Aura Loader */}
+                <div className="md-player-loader-center">
+                  <div className="md-aura-ring-pulse">
+                    <div className="md-aura-inner-glow" />
+                    <div className="md-aura-play-icon">
+                      <svg
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <polygon points="6 3 20 12 6 21" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="md-loader-label">
+                    {streamLoading
+                      ? "Connecting to swarm..."
+                      : "Buffering stream..."}
+                  </div>
+                </div>
+              </div>
+
+              {activeStreamUrl && (
+                <>
+                  <video
+                    src={activeStreamUrl}
+                    controls
+                    autoPlay
+                    playsInline
+                    crossOrigin="anonymous"
+                    className="md-inline-video"
+                    style={{
+                      "--sub-font-size":
+                        subSize === "small"
+                          ? "0.95rem"
+                          : subSize === "large"
+                            ? "1.65rem"
+                            : "1.25rem",
+                    }}
+                    onCanPlay={() => setIsVideoReady(true)}
+                    onPlaying={() => setIsVideoReady(true)}
+                    onWaiting={() => setIsVideoReady(false)}
+                  >
+                    {selectedSubUrl && (
+                      <track
+                        key={selectedSubUrl}
+                        kind="subtitles"
+                        label="English"
+                        srcLang="en"
+                        src={selectedSubUrl}
+                        default
+                      />
+                    )}
+                  </video>
+
+                  {/* Bottom Control Bar Subtitle Button (Next to Volume / Fullscreen) */}
+                  <div className="md-bottom-sub-overlay">
+                    <div className="md-sub-menu-container">
+                      <button
+                        className={`md-bottom-sub-btn ${selectedSubUrl ? "active" : ""}`}
+                        onClick={() => setIsSubMenuOpen((prev) => !prev)}
+                        title="Subtitles / Closed Captions"
+                      >
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <rect x="2" y="4" width="20" height="16" rx="2" />
+                          <path d="M7 15h4M15 15h2M7 11h2M13 11h4" />
+                        </svg>
+                        <span className="md-bottom-sub-label">CC</span>
+                      </button>
+
+                      {isSubMenuOpen && (
+                        <div className="md-bottom-sub-dropdown">
+                          {/* Font Size Selector */}
+                          <div className="md-sub-size-controls">
+                            <span className="md-sub-size-label">Size</span>
+                            <div className="md-sub-size-btn-group">
+                              <button
+                                className={`md-sub-size-btn ${subSize === "small" ? "active" : ""}`}
+                                onClick={() => setSubSize("small")}
+                                title="Small Text (0.95rem)"
+                              >
+                                S
+                              </button>
+                              <button
+                                className={`md-sub-size-btn ${subSize === "medium" ? "active" : ""}`}
+                                onClick={() => setSubSize("medium")}
+                                title="Medium Text (1.25rem)"
+                              >
+                                M
+                              </button>
+                              <button
+                                className={`md-sub-size-btn ${subSize === "large" ? "active" : ""}`}
+                                onClick={() => setSubSize("large")}
+                                title="Large Text (1.65rem)"
+                              >
+                                L
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="md-sub-dropdown-header">
+                            Track Selection
+                          </div>
+                          <button
+                            className={`md-sub-item-btn ${!selectedSubUrl ? "selected" : ""}`}
+                            onClick={() => {
+                              setSelectedSubUrl(null);
+                              setIsSubMenuOpen(false);
+                            }}
+                          >
+                            <span>Off</span>
+                            {!selectedSubUrl && (
+                              <span className="md-sub-item-check">✓</span>
+                            )}
+                          </button>
+
+                          {subtitles.length === 0 ? (
+                            <div
+                              style={{
+                                padding: "8px 10px",
+                                fontSize: "0.78rem",
+                                color: "rgba(255,255,255,0.4)",
+                              }}
+                            >
+                              No subtitles available
+                            </div>
+                          ) : (
+                            subtitles.map((sub, idx) => {
+                              const subUrl = `/api/subtitles/vtt?url=${encodeURIComponent(sub.downloadUrl)}`;
+                              const isSelected = selectedSubUrl === subUrl;
+                              return (
+                                <button
+                                  key={sub.id || idx}
+                                  className={`md-sub-item-btn ${isSelected ? "selected" : ""}`}
+                                  onClick={() => {
+                                    setSelectedSubUrl(subUrl);
+                                    setIsSubMenuOpen(false);
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    {sub.lang}{" "}
+                                    {sub.fileName
+                                      ? `(${sub.fileName.slice(0, 16)}...)`
+                                      : ""}
+                                  </span>
+                                  {isSelected && (
+                                    <span className="md-sub-item-check">✓</span>
+                                  )}
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </section>
         )}
 
@@ -722,82 +1092,13 @@ export default function MovieDetail() {
           </section>
         )}
 
-        {/* Embedded Video Player Section */}
-        {isPlayerActive && (
-          <section ref={playerRef} className="md-inline-player-section">
-            <div className="md-inline-player-header">
-              <div className="md-inline-player-title-wrap">
-                <h3 className="md-inline-player-title">{displayTitle}</h3>
-              </div>
-              <div className="md-inline-player-controls">
-                <button
-                  className="md-player-action-btn"
-                  onClick={() => handleFetchSources("stream")}
-                  title="Switch stream source"
-                >
-                  Change Source
-                </button>
-              </div>
-            </div>
-            <div className="md-inline-player-wrapper">
-              {/* Poster Breathing + Pulsing Play Aura Overlay */}
-              <div
-                className={`md-player-poster-overlay ${
-                  isVideoReady ? "is-hidden" : ""
-                }`}
-                style={{
-                  backgroundImage: `url(${poster})`,
-                }}
-              >
-                {/* Dark/Light breathing tint layer */}
-                <div className="md-poster-breathing-tint" />
-
-                {/* Option B: Modern Pulsing Play Aura Loader */}
-                <div className="md-player-loader-center">
-                  <div className="md-aura-ring-pulse">
-                    <div className="md-aura-inner-glow" />
-                    <div className="md-aura-play-icon">
-                      <svg
-                        width="32"
-                        height="32"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <polygon points="6 3 20 12 6 21" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="md-loader-label">
-                    {streamLoading
-                      ? "Connecting to swarm..."
-                      : "Buffering stream..."}
-                  </div>
-                </div>
-              </div>
-
-              {activeStreamUrl && (
-                <video
-                  src={activeStreamUrl}
-                  controls
-                  autoPlay
-                  playsInline
-                  className="md-inline-video"
-                  onCanPlay={() => setIsVideoReady(true)}
-                  onPlaying={() => setIsVideoReady(true)}
-                  onWaiting={() => setIsVideoReady(false)}
-                />
-              )}
-            </div>
-          </section>
-        )}
-
         <div className="md-divider" />
 
         {/* Similar / Recommended Movies using unified MovieSection */}
         {recommendations.length > 0 && (
           <MovieSection
             id="similar-movies"
-            title="More Like This"
+            title="Movies Like This"
             movies={recommendations}
             scrollable={true}
           />
@@ -807,7 +1108,7 @@ export default function MovieDetail() {
         {trending.length > 0 && (
           <MovieSection
             id="detail-trending-movies"
-            title="Trending"
+            title="Trending Movies"
             movies={trending}
             scrollable={true}
           />
@@ -827,7 +1128,7 @@ export default function MovieDetail() {
         {popular.length > 0 && (
           <MovieSection
             id="detail-popular-movies"
-            title="Popular"
+            title="Popular Movies"
             movies={popular}
             scrollable={true}
           />
@@ -859,8 +1160,8 @@ export default function MovieDetail() {
             <div>
               <h3 className="md-modal-title">
                 {activeModalType === "stream"
-                  ? `Stream — ${isTv && selectedEpisode ? `${displayTitle} E${String(selectedEpisode.episode_number).padStart(2,"0")} · ${selectedEpisode.name}` : displayTitle}`
-                  : `Download — ${isTv && selectedEpisode ? `${displayTitle} E${String(selectedEpisode.episode_number).padStart(2,"0")} · ${selectedEpisode.name}` : displayTitle}`}
+                  ? `Stream — ${isTv && selectedEpisode ? `${displayTitle} E${String(selectedEpisode.episode_number).padStart(2, "0")} · ${selectedEpisode.name}` : displayTitle}`
+                  : `Download — ${isTv && selectedEpisode ? `${displayTitle} E${String(selectedEpisode.episode_number).padStart(2, "0")} · ${selectedEpisode.name}` : displayTitle}`}
               </h3>
 
               {/* Phase 1: Scraping sources */}
@@ -883,8 +1184,8 @@ export default function MovieDetail() {
                 !streamLoading &&
                 (!sources || sources.length === 0) && (
                   <div className="md-no-sources">
-                    No torrent/stream sources found. Make sure
-                    your scraper backend is running.
+                    No torrent/stream sources found. Make sure your scraper
+                    backend is running.
                   </div>
                 )}
 
@@ -899,19 +1200,62 @@ export default function MovieDetail() {
                       ? src.title.match(/\b(19|20)\d{2}\b/)?.[0]
                       : null;
                     const cleanName = src.title
-                      ? src.title.replace(/\.(mkv|mp4|avi|x264|x265|BluRay|WEBRip|HDTV|WEB-DL|10bit|HEVC|AAC|AC3|DDP5|H\.264|H\.265)\S*/gi, "").trim()
+                      ? src.title
+                          .replace(
+                            /\.(mkv|mp4|avi|x264|x265|BluRay|WEBRip|HDTV|WEB-DL|10bit|HEVC|AAC|AC3|DDP5|H\.264|H\.265)\S*/gi,
+                            "",
+                          )
+                          .trim()
                       : "Unknown Release";
 
                     return (
                       <div key={index} className="md-source-row">
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div className="md-source-title">{cleanName}</div>
-                          <div className="md-source-meta">
+                          <div
+                            className="md-source-meta"
+                            style={{
+                              display: "flex",
+                              gap: "8px",
+                              alignItems: "center",
+                              marginTop: "4px",
+                            }}
+                          >
                             {quality && (
                               <span className="md-source-quality">
                                 {quality}
                               </span>
                             )}
+                            {src.size && src.size !== "Unknown" && (
+                              <span
+                                className="md-source-size"
+                                style={{
+                                  background: "rgba(255,255,255,0.08)",
+                                  padding: "2px 6px",
+                                  borderRadius: "4px",
+                                  fontSize: "0.4rem",
+                                  color: "#e2e8f0",
+                                }}
+                              >
+                                {src.size}
+                              </span>
+                            )}
+                            {src.seeders !== undefined &&
+                              src.seeders !== null && (
+                                <span
+                                  className="md-source-seeds"
+                                  style={{
+                                    background: "rgba(34,197,94,0.15)",
+                                    color: "#4ade80",
+                                    padding: "2px 6px",
+                                    borderRadius: "4px",
+                                    fontSize: "0.4rem",
+                                    fontWeight: "600",
+                                  }}
+                                >
+                                  {src.seeders} seeds
+                                </span>
+                              )}
                             {releaseYear && <span>· {releaseYear}</span>}
                           </div>
                         </div>

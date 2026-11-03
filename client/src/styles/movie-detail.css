@@ -671,7 +671,9 @@
     0 24px 64px rgba(0, 0, 0, 0.7),
     0 0 30px rgba(168, 85, 247, 0.12);
   animation: mdModalIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    transform 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .md-modal.closing {
@@ -727,8 +729,8 @@
 }
 
 .md-modal-title {
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 400;
   margin-bottom: 10px;
   padding-bottom: 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -743,7 +745,7 @@
 .md-source-row {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.07);
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-radius: 8px;
   display: flex;
   justify-content: space-between;
@@ -760,8 +762,8 @@
 }
 
 .md-source-title {
-  font-weight: 600;
-  font-size: 0.9rem;
+  font-weight: 400;
+  font-size: 0.7rem;
   margin-bottom: 3px;
   color: rgba(255, 255, 255, 0.9);
 }
@@ -775,27 +777,59 @@
 }
 
 .md-source-quality {
+  font-size: 0.4rem;
+  font-weight: 700;
   color: #c084fc;
-  font-weight: 600;
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+  display: inline-block;
+}
+
+.md-ep-source-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+
+.md-source-size {
+  font-size: 0.5rem;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 500;
+  display: inline-block;
 }
 
 .md-source-seeds {
+  font-size: 0.5rem;
   color: #4ade80;
+  background: rgba(74, 222, 128, 0.08);
+  border: 1px solid rgba(74, 222, 128, 0.2);
+  padding: 1px 5px;
+  border-radius: 3px;
   font-weight: 500;
+  display: inline-block;
 }
 
 .md-source-btn {
   flex-shrink: 0;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 0.85rem;
+  padding: 5px 13px;
+  border-radius: 6px;
+  font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   background: linear-gradient(90deg, var(--accent), var(--accent2));
   color: #fff;
   border: none;
@@ -938,6 +972,169 @@
   overflow: hidden;
 }
 
+/* ── Subtitle Menu & Controls ── */
+/* ── Bottom Subtitle Control (Near Volume / Fullscreen) ── */
+.md-bottom-sub-overlay {
+  position: absolute;
+  bottom: 12px;
+  right: 120px; /* Positions cleanly next to native volume / fullscreen icons */
+  z-index: 25;
+  display: flex;
+  align-items: center;
+}
+
+.md-bottom-sub-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: rgba(18, 18, 26, 0.75);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.85);
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.md-bottom-sub-btn:hover {
+  background: rgba(168, 85, 247, 0.4);
+  border-color: rgba(168, 85, 247, 0.7);
+  color: #fff;
+}
+
+.md-bottom-sub-btn.active {
+  background: rgba(168, 85, 247, 0.65);
+  border-color: #a855f7;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.45);
+}
+
+.md-bottom-sub-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.md-bottom-sub-dropdown {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  width: 260px;
+  max-height: 320px;
+  background: #12121a;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  z-index: 100;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.8);
+  overflow-y: auto;
+}
+
+/* Subtitle Font Size Controller */
+.md-sub-size-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px 8px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 4px;
+}
+
+.md-sub-size-label {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.md-sub-size-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.md-sub-size-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.8);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.md-sub-size-btn:hover {
+  background: rgba(168, 85, 247, 0.25);
+  color: #fff;
+}
+
+.md-sub-size-btn.active {
+  background: #a855f7;
+  border-color: #a855f7;
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ── WebVTT Cue Styling with Custom Variable ── */
+.md-inline-video::cue {
+  font-size: var(--sub-font-size, 1.25rem) !important;
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  color: #ffffff !important;
+  text-shadow: 0 0 4px #000000 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  line-height: 1.4 !important;
+}
+
+.md-sub-dropdown-header {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 6px 10px 4px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 4px;
+}
+
+.md-sub-item-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.85);
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.md-sub-item-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.md-sub-item-btn.selected {
+  background: rgba(168, 85, 247, 0.25);
+  color: #d8b4fe;
+  font-weight: 600;
+}
+
+.md-sub-item-check {
+  font-size: 0.85rem;
+  color: #a855f7;
+}
+
 .md-inline-video {
   width: 100%;
   height: 100%;
@@ -959,7 +1156,9 @@
   justify-content: center;
   opacity: 1;
   visibility: visible;
-  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.65s;
+  transition:
+    opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0.65s;
 }
 
 .md-player-poster-overlay.is-hidden {
@@ -1011,7 +1210,12 @@
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(168, 85, 247, 0.35) 0%, rgba(236, 72, 153, 0.15) 60%, transparent 80%);
+  background: radial-gradient(
+    circle,
+    rgba(168, 85, 247, 0.35) 0%,
+    rgba(236, 72, 153, 0.15) 60%,
+    transparent 80%
+  );
   border: 1.5px solid rgba(168, 85, 247, 0.65);
   box-shadow:
     0 0 24px rgba(168, 85, 247, 0.45),
@@ -1052,7 +1256,8 @@
   align-items: center;
   justify-content: center;
   margin-left: 3px; /* visual center for play triangle */
-  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 20px rgba(168, 85, 247, 0.8));
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8))
+    drop-shadow(0 0 20px rgba(168, 85, 247, 0.8));
   animation: playGlyphPulse 2.2s ease-in-out infinite alternate;
 }
 
@@ -1273,7 +1478,6 @@
     gap: 12px;
   }
 }
-
 
 /* ============================================================
    TV SHOW — 3-Step Funnel: Seasons → Episodes → Inline Magnets
@@ -1518,4 +1722,151 @@
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+}
+
+/* ============================================================
+   TV SHOW MOBILE OPTIMIZATION — Clean, compact, readable
+   ============================================================ */
+@media (max-width: 680px) {
+  .md-tv-section {
+    padding: 14px 12px 18px;
+    margin-top: 10px;
+    margin-bottom: 18px;
+    border-radius: 12px;
+  }
+
+  .md-tv-header {
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+  }
+
+  .md-tv-section .md-section-heading h2 {
+    font-size: 1.15rem;
+  }
+
+  .md-ep-count {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+  }
+
+  .md-season-tabs {
+    gap: 6px;
+  }
+
+  .md-season-tab {
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    border-radius: 8px;
+  }
+
+  /* Episode rows: 2-line layout so title is 100% visible */
+  .md-episode-list {
+    gap: 6px;
+  }
+
+  .md-episode-row {
+    border-radius: 8px;
+  }
+
+  .md-episode-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px 10px 8px;
+    gap: 6px;
+  }
+
+  .md-episode-info {
+    width: 100%;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .md-episode-num {
+    font-size: 0.72rem;
+    padding: 2px 7px;
+  }
+
+  .md-episode-name {
+    font-size: 0.86rem;
+    white-space: normal;
+    line-height: 1.25;
+    flex: 1;
+  }
+
+  .md-episode-year {
+    font-size: 0.74rem;
+  }
+
+  .md-episode-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  /* Source rows: compact and full text visible */
+  .md-episode-panel {
+    padding: 8px 8px 10px;
+  }
+
+  .md-ep-source-list {
+    gap: 6px;
+  }
+
+  .md-ep-source-row {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 8px 10px;
+    gap: 6px;
+    border-radius: 8px;
+  }
+
+  .md-ep-source-info {
+    width: 100%;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .md-ep-source-badges {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+  }
+
+  .md-source-quality {
+    font-size: 0.65rem;
+    padding: 1px 5px;
+  }
+
+  .md-source-size {
+    font-size: 0.4rem;
+    padding: 1px 4px;
+  }
+
+  .md-source-seeds {
+    font-size: 0.4rem;
+    padding: 1px 4px;
+  }
+
+  .md-ep-source-name {
+    white-space: normal;
+    word-break: break-word;
+    max-width: 100%;
+    font-size: 0.8rem;
+    line-height: 1.25;
+  }
+
+  .md-ep-source-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .md-source-btn {
+    padding: 4px 10px;
+    font-size: 0.68rem;
+    border-radius: 5px;
+    gap: 4px;
+  }
 }

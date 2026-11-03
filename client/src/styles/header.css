@@ -214,7 +214,29 @@
   color: var(--muted, #6b7280);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+}
+
+.suggestion-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 4px;
+}
+
+.suggestion-badge.badge-movie {
+  background: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
+.suggestion-badge.badge-tv {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.4);
 }
 
 .suggestion-rating {

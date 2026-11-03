@@ -9,12 +9,13 @@ import {
 import TrailerModal from "./TrailerModal";
 
 /* ─── helpers ─────────────────────────────────────────── */
-function getYear(movie) {
-  return movie.release_date ? movie.release_date.split("-")[0] : "";
+function getYear(item) {
+  const dateStr = item.release_date || item.first_air_date;
+  return dateStr ? dateStr.split("-")[0] : "";
 }
 
-function getGenres(movie) {
-  return (movie.genre_ids || [])
+function getGenres(item) {
+  return (item.genre_ids || [])
     .map((id) => GENRES[id])
     .filter(Boolean)
     .slice(0, 3);
@@ -42,50 +43,63 @@ function StarRow({ score }) {
 }
 
 /* ─── component ────────────────────────────────────────── */
-export default function HeroBanner({ movies = [] }) {
+export default function HeroBanner({ movies = [], tvShows = [] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [trailerKey, setTrailerKey] = useState(null);
   const [isTrailerOpen, setIsTrailerOpen] = useState(false);
   const [fading, setFading] = useState(false);
   const navigate = useNavigate();
 
-  const heroMovies = movies.slice(0, 4);
-  const currentMovie = heroMovies[currentIndex];
+  // Interleave Movie -> TV -> Movie -> TV (total 4 items)
+  const heroItems = [];
+  const maxLen = Math.max(movies.length, tvShows.length);
+  for (let i = 0; i < maxLen && heroItems.length < 4; i++) {
+    if (movies[i]) heroItems.push({ ...movies[i], media_type: "movie" });
+    if (heroItems.length < 4 && tvShows[i])
+      heroItems.push({ ...tvShows[i], media_type: "tv" });
+  }
+
+  const currentItem = heroItems[currentIndex];
 
   /* Auto-rotate every 8 s with a quick fade transition */
   useEffect(() => {
-    if (heroMovies.length === 0) return;
+    if (heroItems.length === 0) return;
     const interval = setInterval(() => {
       setFading(true);
       setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % heroMovies.length);
+        setCurrentIndex((prev) => (prev + 1) % heroItems.length);
         setFading(false);
       }, 400);
     }, 8000);
     return () => clearInterval(interval);
-  }, [heroMovies.length]);
+  }, [heroItems.length]);
 
-  if (!currentMovie) return null;
+  if (!currentItem) return null;
+
+  const isTv =
+    currentItem.media_type === "tv" || Boolean(currentItem.first_air_date);
+  const title = currentItem.title || currentItem.name || "";
+  const linkUrl = isTv ? `/tv/${currentItem.id}` : `/movie/${currentItem.id}`;
 
   /* Derived data */
-  const backdropUrl = currentMovie.backdrop_path
-    ? `${IMAGE_BASE_ORIGINAL}${currentMovie.backdrop_path}`
+  const backdropUrl = currentItem.backdrop_path
+    ? `${IMAGE_BASE_ORIGINAL}${currentItem.backdrop_path}`
     : "";
 
-  const posterUrl = (movie) =>
-    movie.poster_path
-      ? `${IMAGE_BASE_W500}${movie.poster_path}`
+  const posterUrl = (item) =>
+    item.poster_path
+      ? `${IMAGE_BASE_W500}${item.poster_path}`
       : "https://via.placeholder.com/92x138?text=?";
 
-  const rating = currentMovie.vote_average
-    ? currentMovie.vote_average.toFixed(1)
+  const rating = currentItem.vote_average
+    ? currentItem.vote_average.toFixed(1)
     : "N/A";
-  const voteCount = currentMovie.vote_count
-    ? currentMovie.vote_count.toLocaleString()
+  const voteCount = currentItem.vote_count
+    ? currentItem.vote_count.toLocaleString()
     : "—";
-  const year = getYear(currentMovie);
-  const genres = getGenres(currentMovie);
-  const { main: titleMain, sub: titleSub } = splitTitle(currentMovie.title);
+  const year = getYear(currentItem);
+  const genres = getGenres(currentItem);
+  const { main: titleMain, sub: titleSub } = splitTitle(title);
 
   /* Switch slide */
   const switchTo = (idx) => {
@@ -100,7 +114,7 @@ export default function HeroBanner({ movies = [] }) {
   /* Trailer */
   const handleWatchTrailer = async () => {
     try {
-      const trailers = await fetchTrailers(currentMovie.id);
+      const trailers = await fetchTrailers(currentItem.id, isTv);
       const official =
         trailers.find((t) => t.type === "Trailer" && t.site === "YouTube") ||
         trailers[0];
@@ -131,7 +145,7 @@ export default function HeroBanner({ movies = [] }) {
         <div className={`hero-content${fading ? " hero-fading" : ""}`}>
           {/* Mobile Poster (shown on compact/phone view up top) */}
           <div className="hero-mobile-poster">
-            <img src={posterUrl(currentMovie)} alt={currentMovie.title} />
+            <img src={posterUrl(currentItem)} alt={title} />
           </div>
 
           {/* Eyebrow row */}
@@ -140,7 +154,9 @@ export default function HeroBanner({ movies = [] }) {
               #{currentIndex + 1} Trending This Week
             </span>
             <div className="hero-eyebrow-line" />
-            <span className="hero-type-badge">Movie</span>
+            <span className="hero-type-badge">
+              {isTv ? "TV Series" : "Movie"}
+            </span>
           </div>
 
           {/* Title */}
@@ -153,7 +169,6 @@ export default function HeroBanner({ movies = [] }) {
           <div className="hero-rating-row">
             <div className="hero-imdb-score">
               <span className="score-num">{rating}</span>
-              <span className="score-label">IMDb</span>
             </div>
             <StarRow score={parseFloat(rating)} />
             {voteCount !== "—" && (
@@ -173,8 +188,8 @@ export default function HeroBanner({ movies = [] }) {
 
           {/* Overview */}
           <p className="hero-desc">
-            {currentMovie.overview
-              ? `${currentMovie.overview.slice(0, 200)}${currentMovie.overview.length > 200 ? "…" : ""}`
+            {currentItem.overview
+              ? `${currentItem.overview.slice(0, 200)}${currentItem.overview.length > 200 ? "…" : ""}`
               : ""}
           </p>
 
@@ -182,7 +197,7 @@ export default function HeroBanner({ movies = [] }) {
           <div className="hero-actions">
             <button
               className="btn-hero-watch"
-              onClick={() => navigate(`/movie/${currentMovie.id}`)}
+              onClick={() => navigate(linkUrl)}
             >
               <svg
                 width="17"
@@ -213,15 +228,15 @@ export default function HeroBanner({ movies = [] }) {
 
         {/* ── Thumbnail strip (right) ── */}
         <div className="hero-thumbnails">
-          {heroMovies.map((m, i) => (
+          {heroItems.map((m, i) => (
             <div
-              key={m.id}
+              key={`${m.id}-${m.media_type || "item"}`}
               className={`hero-thumb${i === currentIndex ? " active" : ""}`}
               onClick={() => switchTo(i)}
               role="button"
-              aria-label={m.title}
+              aria-label={m.title || m.name}
             >
-              <img src={posterUrl(m)} alt={m.title} loading="lazy" />
+              <img src={posterUrl(m)} alt={m.title || m.name} loading="lazy" />
             </div>
           ))}
         </div>

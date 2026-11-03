@@ -104,6 +104,12 @@ const parseTorrentDetails = (rawTitle, rawSize = null) => {
     let quality = qualityMatch ? qualityMatch[1].toUpperCase() : 'Unknown';
     if (quality === '4K') quality = '2160p';
 
+    // 2b. Extract Codec (x265, HEVC, x264, AV1)
+    let codec = 'x264';
+    if (/x265|hevc/i.test(rawTitle)) codec = 'x265';
+    else if (/av1/i.test(rawTitle)) codec = 'AV1';
+    else if (/x264|h264|avc/i.test(rawTitle)) codec = 'x264';
+
     // 3. Extract Year (4-digit year between 1900 and 2099)
     const yearMatch = rawTitle.match(/\b(19\d\d|20\d\d)\b/);
     const year = yearMatch ? parseInt(yearMatch[1], 10) : null;
@@ -123,6 +129,7 @@ const parseTorrentDetails = (rawTitle, rawSize = null) => {
         cleanTitle: cleanTitle || rawTitle,
         year,
         quality,
+        codec,
         size
     };
 };
@@ -156,6 +163,7 @@ const normalizeAndDeduplicate = (streamsList, defaultProvider = 'unknown') => {
             // Allows the stream server to skip DHT and fetch metadata instantly.
             torrentUrl: item.torrentUrl || item.torrent_url || null,
             quality: item.quality && item.quality !== 'Unknown' ? item.quality.toUpperCase() : parsed.quality,
+            codec: item.codec || parsed.codec || 'x264',
             size: item.size && item.size !== 'Unknown' ? item.size : parsed.size,
             seeders: parseInt(item.seeders, 10) || 0,
             leechers: parseInt(item.leechers, 10) || 0,

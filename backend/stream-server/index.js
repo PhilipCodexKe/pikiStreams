@@ -107,24 +107,61 @@ function getMimeType(filename) {
   return MIME_MAP[getFileExt(filename)] || "video/mp4";
 }
 
-function getVideoFile(torrent) {
+function getVideoFile(torrent, requestedFileIdx = null, season = null, episode = null) {
   if (!torrent.files || !torrent.files.length) return null;
 
   console.log(`[Stream DEBUG] Torrent files found (${torrent.files.length}):`);
-  for (const f of torrent.files) {
-    console.log(`  - "${f.name}" (${(f.length / (1024 * 1024)).toFixed(2)} MB)`);
+  for (let i = 0; i < Math.min(torrent.files.length, 25); i++) {
+    const f = torrent.files[i];
+    console.log(`  [${i}] "${f.name}" (${(f.length / (1024 * 1024)).toFixed(2)} MB)`);
+  }
+  if (torrent.files.length > 25) {
+    console.log(`  ... and ${torrent.files.length - 25} more files.`);
   }
 
-  // 1. Filter only genuine video files matching known video extensions
+  // 1. Explicit fileIdx passed (e.g. from Torrentio season pack matching)
+  if (requestedFileIdx !== null && requestedFileIdx !== undefined) {
+    const idx = parseInt(requestedFileIdx, 10);
+    if (!isNaN(idx) && torrent.files[idx]) {
+      console.log(`[Stream DEBUG] Matched target file via explicit fileIdx [${idx}]: "${torrent.files[idx].name}"`);
+      return torrent.files[idx];
+    }
+  }
+
+  // 2. Season & Episode Regex Matching (e.g. S01E02, 1x02, Episode 2)
+  if (episode !== null && episode !== undefined) {
+    const epNum = parseInt(episode, 10);
+    const sNum = season ? parseInt(season, 10) : null;
+
+    const patterns = [];
+    if (sNum) {
+      patterns.push(new RegExp(`s0?${sNum}[._ -]?e0?${epNum}\\b`, 'i'));
+      patterns.push(new RegExp(`\\b${sNum}x0?${epNum}\\b`, 'i'));
+    }
+    patterns.push(new RegExp(`\\be0?${epNum}\\b`, 'i'));
+    patterns.push(new RegExp(`\\bepisode[._ -]?0?${epNum}\\b`, 'i'));
+
+    for (const pattern of patterns) {
+      const match = torrent.files.find(f => {
+        const isVid = VIDEO_EXTS.some(ext => f.name.toLowerCase().endsWith(ext));
+        return isVid && pattern.test(f.name);
+      });
+      if (match) {
+        console.log(`[Stream DEBUG] Matched target episode file via pattern (${pattern}): "${match.name}"`);
+        return match;
+      }
+    }
+  }
+
+  // 3. Fallback: Filter only genuine video files and pick the largest one (feature movie / single episode)
   const videoFiles = torrent.files.filter((f) => {
     const name = f.name.toLowerCase();
     return VIDEO_EXTS.some((ext) => name.endsWith(ext));
   });
 
   if (videoFiles.length > 0) {
-    // Pick the largest video file (ensures we get the actual full feature film, not a sample clip)
     const primaryVideo = videoFiles.slice().sort((a, b) => b.length - a.length)[0];
-    console.log(`[Stream DEBUG] Selected primary video: "${primaryVideo.name}" (${(primaryVideo.length / (1024 * 1024)).toFixed(2)} MB)`);
+    console.log(`[Stream DEBUG] Defaulted to largest video file: "${primaryVideo.name}" (${(primaryVideo.length / (1024 * 1024)).toFixed(2)} MB)`);
     return primaryVideo;
   }
 
@@ -332,7 +369,7 @@ app.post("/stream/init", async (req, res) => {
       .json({ error: "Torrent client is initializing. Retry in a moment." });
   }
 
-  const { magnet, infoHash, torrentUrl } = req.body;
+  const { magnet, infoHash, torrentUrl, fileIdx, season, episode } = req.body;
   if (!magnet) {
     return res
       .status(400)
@@ -366,9 +403,11 @@ app.post("/stream/init", async (req, res) => {
     let source = magnet; // default: DHT via magnet
     let isBuffer = false;
 
-    // Phase 2A: If torrentUrl is provided, or if this is a YTS torrent hash,
-    // fetch the .torrent buffer directly to bypass the slow DHT resolution.
-    const downloadTargetUrl = torrentUrl || (infoHash ? `https://yts.mx/torrent/download/${infoHash}` : null);
+    // Phase 2A: Only query YTS .torrent buffer if torrentUrl is explicitly provided
+    // and points to YTS (do NOT guess yts.mx for TV shows or non-YTS movies)
+    const downloadTargetUrl = (torrentUrl && (torrentUrl.includes('yts.') || torrentUrl.includes('yify'))) 
+      ? torrentUrl 
+      : null;
 
     if (downloadTargetUrl) {
       try {
@@ -423,6 +462,11 @@ app.post("/stream/init", async (req, res) => {
 
     torrentCache.set(cacheKey, torrent);
 
+    // Attach target episode pointers to torrent object for subsequent /stream/:infoHash call
+    if (fileIdx !== undefined) torrent._targetFileIdx = fileIdx;
+    if (season !== undefined) torrent._targetSeason = season;
+    if (episode !== undefined) torrent._targetEpisode = episode;
+
     console.log(
       `[Init] Ready → ${torrent.infoHash} | ` +
         `${torrent.files.length} file(s) | ` +
@@ -473,7 +517,12 @@ app.get("/stream/:infoHash", async (req, res) => {
     return res.status(504).json({ error: "Torrent metadata not ready yet." });
   }
 
-  const file = getVideoFile(torrent);
+  // Resolve target file: checks query params first, then cached torrent metadata
+  const targetFileIdx = req.query.fileIdx ?? torrent._targetFileIdx ?? null;
+  const targetSeason = req.query.season ?? torrent._targetSeason ?? null;
+  const targetEpisode = req.query.episode ?? torrent._targetEpisode ?? null;
+
+  const file = getVideoFile(torrent, targetFileIdx, targetSeason, targetEpisode);
   if (!file) return res.status(404).send("No video file found in torrent");
 
   // ── Prioritize Initial Video Playback Pieces ──────────────────────────────

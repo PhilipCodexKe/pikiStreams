@@ -26,6 +26,14 @@ export const GENRES = {
   53: "Thriller",
   10752: "War",
   37: "Western",
+  10759: "Action & Adventure",
+  10762: "Kids",
+  10763: "News",
+  10764: "Reality",
+  10765: "Sci-Fi & Fantasy",
+  10766: "Soap",
+  10767: "Talk",
+  10768: "War & Politics",
 };
 
 export async function fetchTrending() {
@@ -44,7 +52,7 @@ export async function fetchTrendingTv() {
 
 export async function fetchTvDetails(tvId) {
   const res = await fetch(
-    `${TMDB_BASE}/tv/${tvId}?api_key=${API_KEY}&append_to_response=videos,credits`
+    `${TMDB_BASE}/tv/${tvId}?api_key=${API_KEY}&append_to_response=videos,credits,external_ids`
   );
   if (!res.ok) throw new Error("Failed to fetch TV show details");
   return await res.json();
@@ -86,8 +94,33 @@ export async function fetchUpcoming() {
   return data.results || [];
 }
 
+export async function fetchMoviesByGenre(genreId, sortBy = "popularity.desc") {
+  const res = await fetch(
+    `${TMDB_BASE}/discover/movie?api_key=${API_KEY}&with_genres=${genreId}&sort_by=${sortBy}`
+  );
+  if (!res.ok) throw new Error(`Failed to fetch movies for genre ${genreId}`);
+  const data = await res.json();
+  return data.results || [];
+}
+
+export async function fetchTopRatedTv() {
+  const res = await fetch(`${TMDB_BASE}/tv/top_rated?api_key=${API_KEY}`);
+  if (!res.ok) throw new Error("Failed to fetch top rated TV shows");
+  const data = await res.json();
+  return (data.results || []).map((item) => ({ ...item, media_type: "tv" }));
+}
+
+export async function fetchTvByGenre(genreId, sortBy = "popularity.desc") {
+  const res = await fetch(
+    `${TMDB_BASE}/discover/tv?api_key=${API_KEY}&with_genres=${genreId}&sort_by=${sortBy}`
+  );
+  if (!res.ok) throw new Error(`Failed to fetch TV series for genre ${genreId}`);
+  const data = await res.json();
+  return (data.results || []).map((item) => ({ ...item, media_type: "tv" }));
+}
+
 export async function fetchMovieDetails(movieId) {
-  const res = await fetch(`${TMDB_BASE}/movie/${movieId}?api_key=${API_KEY}&append_to_response=videos,credits`);
+  const res = await fetch(`${TMDB_BASE}/movie/${movieId}?api_key=${API_KEY}&append_to_response=videos,credits,external_ids`);
   if (!res.ok) throw new Error("Failed to fetch movie details");
   return await res.json();
 }
@@ -99,8 +132,9 @@ export async function fetchMovieRecommendations(movieId) {
   return data.results || [];
 }
 
-export async function fetchTrailers(movieId) {
-  const res = await fetch(`${TMDB_BASE}/movie/${movieId}/videos?api_key=${API_KEY}`);
+export async function fetchTrailers(movieId, isTv = false) {
+  const endpoint = isTv ? 'tv' : 'movie';
+  const res = await fetch(`${TMDB_BASE}/${endpoint}/${movieId}/videos?api_key=${API_KEY}`);
   if (!res.ok) return [];
   const data = await res.json();
   return data.results || [];
@@ -114,18 +148,37 @@ export async function searchMovies(query) {
   return data.results || [];
 }
 
-export async function scrapeMovieSources(title, year = null) {
+export async function searchMulti(query) {
+  if (!query || !query.trim()) return [];
+  const res = await fetch(`${TMDB_BASE}/search/multi?api_key=${API_KEY}&query=${encodeURIComponent(query)}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.results || []).filter(
+    (item) => item.media_type === "movie" || item.media_type === "tv"
+  );
+}
+
+export async function scrapeMovieSources(title, year = null, tmdbId = null, imdbId = null) {
   const cleanTitle = title.replace(/[^a-zA-Z0-9 ]/g, "").trim();
-  const queryParams = year ? `?year=${year}` : '';
-  const res = await fetch(`/api/scrape/${encodeURIComponent(cleanTitle)}${queryParams}`);
+  const params = new URLSearchParams();
+  if (year) params.append("year", year);
+  if (tmdbId) params.append("tmdb_id", tmdbId);
+  if (imdbId) params.append("imdb_id", imdbId);
+  const queryString = params.toString() ? `?${params.toString()}` : "";
+  const res = await fetch(`/api/scrape/${encodeURIComponent(cleanTitle)}${queryString}`);
   if (!res.ok) throw new Error("Failed to scrape movie sources");
   return await res.json();
 }
 
-export async function scrapeTvSources(tmdbId, season = 1, episode = 1, title = "") {
+export async function scrapeTvSources(tmdbId, season = 1, episode = 1, title = "", imdbId = null) {
   const cleanTitle = title.replace(/[^a-zA-Z0-9 ]/g, "").trim();
-  const queryParams = `?season=${season}&episode=${episode}&title=${encodeURIComponent(cleanTitle)}`;
-  const res = await fetch(`/api/scrape/tv/${tmdbId}${queryParams}`);
+  const params = new URLSearchParams({
+    season: String(season),
+    episode: String(episode),
+    title: cleanTitle
+  });
+  if (imdbId) params.append("imdb_id", imdbId);
+  const res = await fetch(`/api/scrape/tv/${tmdbId}?${params.toString()}`);
   if (!res.ok) throw new Error("Failed to scrape TV episode sources");
   return await res.json();
 }
@@ -140,19 +193,36 @@ export async function scrapeTvSources(tmdbId, season = 1, episode = 1, title = "
  * the server fetches the .torrent buffer instead of resolving via DHT.
  * TTFB drops from ~15s → ~1-3s for YTS content.
  */
-export async function initStream(magnet, infoHash = null, torrentUrl = null) {
+export async function initStream(magnet, infoHash = null, torrentUrl = null, options = {}) {
+  const payload = { magnet, infoHash, torrentUrl };
+  if (options.fileIdx !== undefined && options.fileIdx !== null) payload.fileIdx = options.fileIdx;
+  if (options.season !== undefined && options.season !== null) payload.season = options.season;
+  if (options.episode !== undefined && options.episode !== null) payload.episode = options.episode;
+
   const res = await fetch('/stream/init', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ magnet, infoHash, torrentUrl }),
+    body:    JSON.stringify(payload),
   });
 
   if (!res.ok) {
-    const payload = await res.json().catch(() => ({ error: 'Unknown stream error' }));
-    throw new Error(payload.error || `Stream init failed (HTTP ${res.status})`);
+    const errorPayload = await res.json().catch(() => ({ error: 'Unknown stream error' }));
+    throw new Error(errorPayload.error || `Stream init failed (HTTP ${res.status})`);
   }
 
   return res.json(); // { infoHash: string }
+}
+
+export async function fetchSubtitles({ imdbId, season = null, episode = null, lang = 'eng' }) {
+  if (!imdbId) return [];
+  const params = new URLSearchParams({ imdb_id: imdbId, lang });
+  if (season !== null && season !== undefined) params.append('season', season);
+  if (episode !== null && episode !== undefined) params.append('episode', episode);
+
+  const res = await fetch(`/api/subtitles?${params.toString()}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.data || [];
 }
 
 export async function enqueueTrendingMovies(moviesList) {

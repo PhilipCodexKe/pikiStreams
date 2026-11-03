@@ -28,10 +28,10 @@ const parse1337xList = ($, rows, mirror) => {
 };
 
 // 1. Cheerio Fast Path
-const searchCheerio = async (query) => {
+const searchCheerio = async (query, category = 'Movies') => {
     try {
         const mirror = await getHealthyMirror('1337x') || 'https://1337x.to';
-        const searchUrl = `${mirror}/category-search/${encodeURIComponent(query)}/Movies/1/`;
+        const searchUrl = `${mirror}/category-search/${encodeURIComponent(query)}/${category}/1/`;
 
         const response = await axios.get(searchUrl, {
             timeout: 4000,
@@ -55,14 +55,14 @@ const searchCheerio = async (query) => {
 };
 
 // 2. Playwright Heavy Path: Waits for Turnstile/Challenge to clear
-const searchPlaywright = async (context, query) => {
+const searchPlaywright = async (context, query, category = 'Movies') => {
     let page = null;
     try {
         page = await context.newPage();
         await applyResourceShield(page);
 
         const mirror = await getHealthyMirror('1337x') || 'https://1337x.to';
-        const searchUrl = `${mirror}/category-search/${encodeURIComponent(query)}/Movies/1/`;
+        const searchUrl = `${mirror}/category-search/${encodeURIComponent(query)}/${category}/1/`;
 
         await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
 

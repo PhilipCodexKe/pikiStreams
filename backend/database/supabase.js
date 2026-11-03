@@ -223,6 +223,212 @@ const updateBulkStatus = async (id, status) => {
     }
 };
 
+// ============================================================================
+// TV SHOWS & EPISODES DATABASE HELPERS
+// ============================================================================
+
+/**
+ * Get saved TV streams for an episode or season pack
+ */
+const getTvStreamsFromDb = async (tmdbId, season, episode = null) => {
+    try {
+        let query = supabase
+            .from('tv_streams')
+            .select('*')
+            .eq('tmdb_id', parseInt(tmdbId, 10))
+            .eq('season', parseInt(season, 10));
+
+        if (episode !== null && episode !== undefined) {
+            query = query.or(`episode.eq.${parseInt(episode, 10)},is_season_pack.eq.true`);
+        }
+
+        const { data, error } = await query.order('seeders', { ascending: false });
+        if (error) throw error;
+
+        return (data || []).map(row => ({
+            ...row,
+            infoHash: row.info_hash,
+            title: row.torrent_title,
+            torrentUrl: row.torrent_url || null,
+            fileIdx: row.file_idx !== undefined ? row.file_idx : null
+        }));
+    } catch (err) {
+        console.error('[Supabase getTvStreamsFromDb error]:', err.message);
+        return [];
+    }
+};
+
+/**
+ * Save freshly scraped TV torrent streams
+ */
+const saveTvStreamsToDb = async ({ tmdbId, imdbId, showTitle, season, episode, isSeasonPack = false, streamsList }) => {
+    if (!streamsList || streamsList.length === 0) return [];
+    try {
+        const payload = streamsList.map(s => {
+            const row = {
+                tmdb_id: parseInt(tmdbId, 10),
+                imdb_id: imdbId || null,
+                show_title: showTitle,
+                season: parseInt(season, 10),
+                episode: episode !== null && episode !== undefined ? parseInt(episode, 10) : null,
+                is_season_pack: isSeasonPack || (!episode),
+                torrent_title: s.title || s.torrent_title,
+                info_hash: s.infoHash ? s.infoHash.toLowerCase() : '',
+                quality: s.quality || 'Unknown',
+                codec: s.codec || 'x264',
+                size: s.size || 'Unknown',
+                seeders: parseInt(s.seeders, 10) || 0,
+                leechers: parseInt(s.leechers, 10) || 0,
+                magnet: s.magnet,
+                provider: s.provider || 'unknown',
+                torrent_url: s.torrentUrl || s.torrent_url || null,
+                updated_at: new Date()
+            };
+            if (s.fileIdx !== undefined && s.fileIdx !== null) {
+                row.file_idx = parseInt(s.fileIdx, 10);
+            }
+            return row;
+        });
+
+        // Try upserting with file_idx; if DB doesn't have the column yet, fallback without it
+        let { data, error } = await supabase
+            .from('tv_streams')
+            .upsert(payload, { onConflict: 'info_hash' })
+            .select();
+
+        if (error && error.message.includes('file_idx')) {
+            console.warn('[Supabase] Warning: "file_idx" column missing in tv_streams table. Retrying without file_idx...');
+            const fallbackPayload = payload.map(({ file_idx, ...rest }) => rest);
+            const retry = await supabase
+                .from('tv_streams')
+                .upsert(fallbackPayload, { onConflict: 'info_hash' })
+                .select();
+            if (retry.error) throw retry.error;
+            return retry.data || [];
+        }
+
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('[Supabase saveTvStreamsToDb error]:', err.message);
+        return [];
+    }
+};
+
+/**
+ * Enqueue bulk TV shows/seasons into bulk_tv_queue
+ */
+const enqueueTvBulk = async (shows) => {
+    if (!shows || !Array.isArray(shows) || shows.length === 0) return [];
+    try {
+        // 1. Prepare raw items
+        const rawItems = shows.map(item => ({
+            tmdb_id: parseInt(item.tmdb_id, 10),
+            imdb_id: item.imdb_id || null,
+            title: item.title ? item.title.trim() : 'Unknown Show',
+            year: item.year ? parseInt(item.year, 10) : null,
+            season: parseInt(item.season || 1, 10),
+            episode: item.episode !== null && item.episode !== undefined ? parseInt(item.episode, 10) : null,
+            mode: item.mode || (item.episode ? 'episode' : 'season_pack'),
+            status: 'pending'
+        }));
+
+        // In-memory deduplication of the incoming batch
+        const uniqueMap = new Map();
+        for (const item of rawItems) {
+            const key = `${item.tmdb_id}_${item.season}_${item.episode}_${item.mode}`;
+            if (!uniqueMap.has(key)) {
+                uniqueMap.set(key, item);
+            }
+        }
+        const uniquePayload = Array.from(uniqueMap.values());
+        if (uniquePayload.length === 0) return [];
+
+        // 2. Fetch existing pending or processing jobs in bulk_tv_queue to avoid duplicates
+        const tmdbIds = Array.from(new Set(uniquePayload.map(p => p.tmdb_id)));
+        const { data: existingRows } = await supabase
+            .from('bulk_tv_queue')
+            .select('tmdb_id, season, episode, mode')
+            .in('tmdb_id', tmdbIds)
+            .in('status', ['pending', 'processing']);
+
+        const existingSet = new Set(
+            (existingRows || []).map(r => `${r.tmdb_id}_${r.season}_${r.episode}_${r.mode}`)
+        );
+
+        const toInsert = uniquePayload.filter(p => {
+            const key = `${p.tmdb_id}_${p.season}_${p.episode}_${p.mode}`;
+            return !existingSet.has(key);
+        });
+
+        if (toInsert.length === 0) {
+            console.log(`[Supabase enqueueTvBulk] All ${uniquePayload.length} jobs already pending/processing in bulk_tv_queue.`);
+            return [];
+        }
+
+        // 3. Insert cleanly without relying on PostgreSQL ON CONFLICT specification
+        const { data, error } = await supabase
+            .from('bulk_tv_queue')
+            .insert(toInsert)
+            .select();
+
+        if (error) {
+            console.error('[Supabase enqueueTvBulk insert error]:', error.message);
+            return [];
+        }
+
+        return data || [];
+    } catch (err) {
+        console.error('[Supabase enqueueTvBulk error]:', err.message);
+        return [];
+    }
+};
+
+/**
+ * Get next pending TV job for the bulk TV worker
+ */
+const getNextTvBulkItem = async () => {
+    try {
+        const { data, error } = await supabase
+            .from('bulk_tv_queue')
+            .select('*')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+        if (error || !data) return null;
+
+        await supabase
+            .from('bulk_tv_queue')
+            .update({ status: 'processing', updated_at: new Date() })
+            .eq('id', data.id);
+
+        return data;
+    } catch (err) {
+        console.error('[Supabase getNextTvBulkItem error]:', err.message);
+        return null;
+    }
+};
+
+/**
+ * Update bulk TV job status
+ */
+const updateTvBulkStatus = async (id, status, errorMessage = null) => {
+    try {
+        await supabase
+            .from('bulk_tv_queue')
+            .update({
+                status,
+                error_message: errorMessage,
+                updated_at: new Date()
+            })
+            .eq('id', id);
+    } catch (err) {
+        console.error('[Supabase updateTvBulkStatus error]:', err.message);
+    }
+};
+
 module.exports = {
     supabase,
     normalizeTitle,
@@ -230,5 +436,10 @@ module.exports = {
     saveStreams,
     enqueueBulk,
     getNextBulkItem,
-    updateBulkStatus
+    updateBulkStatus,
+    getTvStreamsFromDb,
+    saveTvStreamsToDb,
+    enqueueTvBulk,
+    getNextTvBulkItem,
+    updateTvBulkStatus
 };

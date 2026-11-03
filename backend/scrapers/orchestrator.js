@@ -1,9 +1,14 @@
 const { chromium } = require('playwright');
 const axios = require('axios');
-const { providers, eztv } = require('./providers');
+const { providers, eztv, x1337, torrentgalaxy, limetorrents } = require('./providers');
 const { normalizeAndDeduplicate } = require('./engine/normalizer');
 const { applyPopupShield } = require('./engine/playwright-shield');
-const { getStreamsForMovie, saveStreams } = require('../database/supabase');
+const { 
+    getStreamsForMovie, 
+    saveStreams, 
+    getTvStreamsFromDb, 
+    saveTvStreamsToDb 
+} = require('../database/supabase');
 
 // Shared Playwright browser instance for on-demand fallbacks
 let browserInstance = null;
@@ -148,25 +153,30 @@ const searchMovieStreams = async (title, year = null, forceRefresh = false, tmdb
 
 /**
  * TV Show Stream Orchestrator
- * 1. Checks Supabase cache for this specific episode.
- * 2. Resolves TMDB ID to IMDb ID via TMDB external_ids (with TVMaze fallback).
- * 3. Queries EZTV API for the show and filters by season and episode.
- * 4. Normalizes, deduplicates, and caches results to Supabase.
+ * Cascading Order: 1337x -> TorrentGalaxy -> EZTV -> LimeTorrents
+ * 1. Checks Supabase tv_streams table cache.
+ * 2. Resolves TMDB ID -> IMDb ID.
+ * 3. Cascade Phase 1: 1337x (High seeds, small x265 file sizes).
+ * 4. Cascade Phase 2: TorrentGalaxy (Fast daily episodes & direct magnets).
+ * 5. Cascade Phase 3: EZTV (Instant JSON API).
+ * 6. Cascade Phase 4: LimeTorrents (Fallback).
+ * 7. Normalizes and caches to Supabase tv_streams table.
  */
-const searchTvStreams = async (tmdbId, season, episode, title = '', forceRefresh = false) => {
+const searchTvStreams = async (tmdbId, season, episode = null, title = '', forceRefresh = false, isSeasonPack = false) => {
     const sNum = parseInt(season, 10);
-    const eNum = parseInt(episode, 10);
-    const episodeTag = `S${String(sNum).padStart(2, '0')}E${String(eNum).padStart(2, '0')}`;
+    const eNum = episode !== null && episode !== undefined ? parseInt(episode, 10) : null;
+    const isPack = isSeasonPack || eNum === null;
+    const episodeTag = isPack ? `S${String(sNum).padStart(2, '0')}` : `S${String(sNum).padStart(2, '0')}E${String(eNum).padStart(2, '0')}`;
     const cleanTitle = (title || 'TV Show').trim();
     const searchIdentifier = `${cleanTitle} ${episodeTag}`;
 
-    console.log(`[Orchestrator] Searching TV streams for: "${searchIdentifier}" (TMDB ID: ${tmdbId})`);
+    console.log(`[TV Orchestrator] Searching TV streams: "${searchIdentifier}" [TMDB: ${tmdbId}, Mode: ${isPack ? 'Season Pack' : 'Episode'}]`);
 
-    // 1. Check database cache
-    if (!forceRefresh) {
-        const cached = await getStreamsForMovie(searchIdentifier);
+    // 1. Check tv_streams table first
+    if (!forceRefresh && tmdbId) {
+        const cached = await getTvStreamsFromDb(tmdbId, sNum, eNum);
         if (cached && cached.length > 0) {
-            console.log(`[Orchestrator] Cache HIT in Supabase: Found ${cached.length} TV streams for "${searchIdentifier}".`);
+            console.log(`[TV Orchestrator] Cache HIT in Supabase tv_streams: Found ${cached.length} stream(s) for "${searchIdentifier}".`);
             return cached;
         }
     }
@@ -182,53 +192,145 @@ const searchTvStreams = async (tmdbId, season, episode, title = '', forceRefresh
             });
             imdbId = tmdbRes.data?.imdb_id;
             if (imdbId) {
-                console.log(`[Orchestrator] Resolved TMDB ID ${tmdbId} to IMDb ID: ${imdbId}`);
+                console.log(`[TV Orchestrator] Resolved TMDB ID ${tmdbId} to IMDb ID: ${imdbId}`);
             }
         } catch (tmdbErr) {
-            console.warn(`[Orchestrator] TMDB external_ids lookup failed for ID ${tmdbId}:`, tmdbErr.message);
+            console.warn(`[TV Orchestrator] TMDB external_ids failed:`, tmdbErr.message);
         }
     }
 
     // Fallback: If no IMDb ID yet, try TVMaze by title
-    if (!imdbId && cleanTitle) {
+    if (!imdbId && cleanTitle && cleanTitle !== 'TV Show') {
         try {
             const tvmazeRes = await axios.get(`https://api.tvmaze.com/singlesearch/shows?q=${encodeURIComponent(cleanTitle)}`, {
                 timeout: 4000
             });
             imdbId = tvmazeRes.data?.externals?.imdb;
             if (imdbId) {
-                console.log(`[Orchestrator] TVMaze resolved "${cleanTitle}" to IMDb ID: ${imdbId}`);
+                console.log(`[TV Orchestrator] TVMaze resolved "${cleanTitle}" to IMDb ID: ${imdbId}`);
             }
         } catch (tvmazeErr) {
-            console.warn(`[Orchestrator] TVMaze search failed for "${cleanTitle}":`, tvmazeErr.message);
+            console.warn(`[TV Orchestrator] TVMaze lookup failed for "${cleanTitle}":`, tvmazeErr.message);
         }
     }
 
-    if (!imdbId) {
-        console.warn(`[Orchestrator] Unable to find IMDb ID for "${cleanTitle}". Cannot query EZTV.`);
-        return [];
-    }
+    const allFoundStreams = [];
+    let browserContext = null;
 
-    // 3. Query EZTV Provider
-    let tvStreams = [];
+    const getContext = async () => {
+        if (!browserContext) {
+            const browser = await getBrowser();
+            browserContext = await browser.newContext({
+                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+            });
+            applyPopupShield(browserContext);
+        }
+        return browserContext;
+    };
+
     try {
-        console.log(`[Orchestrator] Querying EZTV for IMDb ID ${imdbId} (${episodeTag})...`);
-        tvStreams = await eztv.searchTv(imdbId, sNum, eNum);
-        console.log(`[Orchestrator] EZTV returned ${tvStreams.length} stream(s) for ${episodeTag}.`);
-    } catch (eztvErr) {
-        console.error(`[Orchestrator] EZTV query failed:`, eztvErr.message);
+        // ====================================================================
+        // STEP 1: 1337x (Best for x265, smallest sizes & high seeds)
+        // ====================================================================
+        try {
+            const query1337x = isPack ? `${cleanTitle} S${String(sNum).padStart(2, '0')}` : `${cleanTitle} ${episodeTag}`;
+            console.log(`[TV Orchestrator] [1/4] Trying 1337x TV for: "${query1337x}"...`);
+            
+            // Try Cheerio fast path first
+            let xResults = await x1337.searchCheerio(query1337x, 'TV');
+            if (!xResults) {
+                const ctx = await getContext();
+                xResults = await x1337.searchPlaywright(ctx, query1337x, 'TV');
+            }
+            if (xResults && xResults.length > 0) {
+                console.log(`[TV Orchestrator] 1337x returned ${xResults.length} TV streams.`);
+                allFoundStreams.push(...xResults);
+            }
+        } catch (err1337) {
+            console.warn('[TV Orchestrator] 1337x TV error:', err1337.message);
+        }
+
+        // ====================================================================
+        // STEP 2: TorrentGalaxy (Fast daily episodes & direct magnet rows)
+        // ====================================================================
+        if (allFoundStreams.length < 3) {
+            try {
+                // TGx supports both IMDb ID search or Title
+                const queryTGx = imdbId ? `${imdbId} ${episodeTag}` : `${cleanTitle} ${episodeTag}`;
+                console.log(`[TV Orchestrator] [2/4] Trying TorrentGalaxy for: "${queryTGx}"...`);
+
+                let tgxResults = await torrentgalaxy.searchCheerio(queryTGx);
+                if (!tgxResults || tgxResults.length === 0) {
+                    const ctx = await getContext();
+                    tgxResults = await torrentgalaxy.searchPlaywright(ctx, queryTGx);
+                }
+                if (tgxResults && tgxResults.length > 0) {
+                    console.log(`[TV Orchestrator] TorrentGalaxy returned ${tgxResults.length} TV streams.`);
+                    allFoundStreams.push(...tgxResults);
+                }
+            } catch (tgxErr) {
+                console.warn('[TV Orchestrator] TorrentGalaxy error:', tgxErr.message);
+            }
+        }
+
+        // ====================================================================
+        // STEP 3: EZTV (Direct JSON API via IMDb ID)
+        // ====================================================================
+        if (allFoundStreams.length < 3 && imdbId && !isPack) {
+            try {
+                console.log(`[TV Orchestrator] [3/4] Trying EZTV API for IMDb: ${imdbId} (${episodeTag})...`);
+                const eztvResults = await eztv.searchTv(imdbId, sNum, eNum);
+                if (eztvResults && eztvResults.length > 0) {
+                    console.log(`[TV Orchestrator] EZTV returned ${eztvResults.length} TV streams.`);
+                    allFoundStreams.push(...eztvResults);
+                }
+            } catch (eztvErr) {
+                console.warn('[TV Orchestrator] EZTV error:', eztvErr.message);
+            }
+        }
+
+        // ====================================================================
+        // STEP 4: LimeTorrents (Fallback)
+        // ====================================================================
+        if (allFoundStreams.length < 3) {
+            try {
+                const queryLime = `${cleanTitle} ${episodeTag}`;
+                console.log(`[TV Orchestrator] [4/4] Trying LimeTorrents TV for: "${queryLime}"...`);
+                const limeResults = await limetorrents.searchCheerio(queryLime, 'tv');
+                if (limeResults && limeResults.length > 0) {
+                    console.log(`[TV Orchestrator] LimeTorrents returned ${limeResults.length} TV streams.`);
+                    allFoundStreams.push(...limeResults);
+                }
+            } catch (limeErr) {
+                console.warn('[TV Orchestrator] LimeTorrents TV error:', limeErr.message);
+            }
+        }
+
+    } finally {
+        if (browserContext) {
+            await browserContext.close().catch(() => {});
+        }
     }
 
-    // 4. Normalize and rank
-    const normalized = normalizeAndDeduplicate(tvStreams);
+    // Normalize & Deduplicate
+    const normalized = normalizeAndDeduplicate(allFoundStreams);
+    console.log(`[TV Orchestrator] Total unique streams after normalization: ${normalized.length}`);
 
-    // 5. Cache to Supabase
-    if (normalized.length > 0) {
+    // Persist to Supabase tv_streams table
+    if (normalized.length > 0 && tmdbId) {
         try {
-            await saveStreams(searchIdentifier, null, normalized, tmdbId);
-            console.log(`[Orchestrator] Cached ${normalized.length} TV streams to Supabase.`);
+            await saveTvStreamsToDb({
+                tmdbId,
+                imdbId,
+                showTitle: cleanTitle,
+                season: sNum,
+                episode: eNum,
+                isSeasonPack: isPack,
+                streamsList: normalized
+            });
+            console.log(`[TV Orchestrator] Cached ${normalized.length} TV streams to tv_streams table.`);
         } catch (dbErr) {
-            console.error('[Orchestrator] Error caching TV streams to Supabase:', dbErr.message);
+            console.error('[TV Orchestrator] Error caching to tv_streams table:', dbErr.message);
         }
     }
 

@@ -31,9 +31,10 @@ const parseListing = ($) => {
 };
 
 // 1. Cheerio Fast Path: Fetches search listing and detail pages for magnets
-const searchCheerio = async (query) => {
+const searchCheerio = async (query, category = 'movies') => {
     try {
-        const searchUrl = `${BASE_URL}/search/movies/${encodeURIComponent(query)}/seeds/1/`;
+        const cat = category.toLowerCase() === 'tv' ? 'tv' : 'movies';
+        const searchUrl = `${BASE_URL}/search/${cat}/${encodeURIComponent(query)}/seeds/1/`;
         const response = await axios.get(searchUrl, {
             timeout: 5000,
             headers: {

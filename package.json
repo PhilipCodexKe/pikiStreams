@@ -6,6 +6,9 @@
     "start": "node backend/server.js",
     "server": "nodemon backend/server.js",
     "worker:start": "node backend/workers/bulk-worker.js --run",
+    "worker:tv:start": "node backend/workers/bulk-tv-worker.js --run",
+    "worker:torrentio:tv": "node backend/workers/torrentio-tv-worker.js --run",
+    "feed:tv": "node backend/feed-tv.js",
     "stream": "nodemon backend/stream-server/index.js",
     "client": "npm run dev --prefix client",
     "dev": "concurrently \"npm run server\" \"npm run stream\" \"npm run client\""
