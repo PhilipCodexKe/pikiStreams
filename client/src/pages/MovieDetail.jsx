@@ -39,7 +39,7 @@ export default function MovieDetail() {
 
   // TV-specific state
   const [tvSeasons, setTvSeasons] = useState([]);
-  const [selectedSeason, setSelectedSeason] = useState(null); // null = show season grid
+  const [selectedSeason, setSelectedSeason] = useState(1);
   const [episodes, setEpisodes] = useState([]);
   const [episodesLoading, setEpisodesLoading] = useState(false);
   // Per-episode inline source panel: { [episodeId]: { loading, sources, open } }
@@ -82,22 +82,26 @@ export default function MovieDetail() {
       setIsVideoReady(false);
       setTrailerKey(null);
       setIsTrailerOpen(false);
-      setSelectedSeason(null);
+      setSelectedSeason(1);
       setEpisodePanels({});
       setEpisodes([]);
       try {
         if (isTv) {
-          // TV show: fetch TV details only — episodes loaded on-demand when user picks a season
-          const [tvData, trendingData, topData, popularData] =
+          // TV show: fetch TV details + Season 1 episodes immediately
+          const [tvData, season1Data, trendingData, topData, popularData] =
             await Promise.all([
               fetchTvDetails(id),
+              fetchTvSeason(id, 1),
               fetchTrending(),
               fetchTopRated(),
               fetchPopular(),
             ]);
           setMovie(tvData);
           // Filter out season 0 (Specials) for cleaner UX
-          setTvSeasons((tvData.seasons || []).filter((s) => s.season_number > 0));
+          const validSeasons = (tvData.seasons || []).filter((s) => s.season_number > 0);
+          setTvSeasons(validSeasons);
+          setSelectedSeason(validSeasons[0]?.season_number || 1);
+          setEpisodes(season1Data?.episodes || []);
           setTrending(trendingData);
           setTopRated(topData);
           setPopular(popularData);
@@ -144,23 +148,20 @@ export default function MovieDetail() {
   };
 
   // When user selects a season, load its episodes
-  useEffect(() => {
-    if (!isTv || !id || selectedSeason === null) return;
-    async function loadSeason() {
-      setEpisodesLoading(true);
-      setEpisodePanels({});
-      setEpisodes([]);
-      try {
-        const seasonData = await fetchTvSeason(id, selectedSeason);
-        setEpisodes(seasonData.episodes || []);
-      } catch (err) {
-        console.error("Failed to load season", err);
-      } finally {
-        setEpisodesLoading(false);
-      }
+  const handleSeasonSelect = async (seasonNum) => {
+    if (selectedSeason === seasonNum) return;
+    setSelectedSeason(seasonNum);
+    setEpisodesLoading(true);
+    setEpisodePanels({});
+    try {
+      const seasonData = await fetchTvSeason(id, seasonNum);
+      setEpisodes(seasonData?.episodes || []);
+    } catch (err) {
+      console.error("Failed to load season", err);
+    } finally {
+      setEpisodesLoading(false);
     }
-    loadSeason();
-  }, [selectedSeason, id, isTv]);
+  };
 
   // Toggle an episode's inline source panel open/closed
   // If opening for the first time, fetch sources from EZTV
@@ -515,153 +516,159 @@ export default function MovieDetail() {
           ============================================================ */}
       <div className="md-below">
         {/* ============================================================
-            TV SHOW: 3-Step Funnel — Seasons → Episodes → Sources
+            TV SHOW: Episodes & Inline Streams Section
             ============================================================ */}
         {isTv && tvSeasons.length > 0 && (
           <section ref={episodesRef} className="md-tv-section">
+            <div className="md-tv-header">
+              <div className="md-section-heading">
+                <h2>Episodes</h2>
+                {episodes.length > 0 && (
+                  <span className="md-ep-count">
+                    Season {selectedSeason} • {episodes.length} episodes
+                  </span>
+                )}
+              </div>
 
-            {/* ── Step 1: Season Grid (shown when no season selected) ── */}
-            {selectedSeason === null ? (
-              <>
-                <div className="md-section-heading">
-                  <h2>Select a Season</h2>
-                </div>
-                <div className="md-season-grid">
-                  {tvSeasons.map((season) => (
-                    <button
-                      key={season.season_number}
-                      className="md-season-card"
-                      onClick={() => setSelectedSeason(season.season_number)}
-                    >
-                      <span className="md-season-card-num">Season {season.season_number}</span>
-                      <span className="md-season-card-eps">
-                        {season.episode_count} episode{season.episode_count !== 1 ? "s" : ""}
-                      </span>
-                      {season.air_date && (
-                        <span className="md-season-card-year">
-                          {season.air_date.split("-")[0]}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <>
-                {/* ── Step 2: Episode List ── */}
-                <div className="md-section-heading">
+              {/* Season Selection Tabs */}
+              <div className="md-season-tabs">
+                {tvSeasons.map((season) => (
                   <button
-                    className="md-back-btn"
-                    onClick={() => {
-                      setSelectedSeason(null);
-                      setEpisodePanels({});
-                      setEpisodes([]);
-                    }}
+                    key={season.season_number}
+                    className={`md-season-tab${
+                      selectedSeason === season.season_number ? " active" : ""
+                    }`}
+                    onClick={() => handleSeasonSelect(season.season_number)}
                   >
-                    ← Seasons
+                    Season {season.season_number}
                   </button>
-                  <h2>Season {selectedSeason}</h2>
-                  {episodes.length > 0 && (
-                    <span className="md-ep-count">{episodes.length} episodes</span>
-                  )}
-                </div>
+                ))}
+              </div>
+            </div>
 
-                {episodesLoading ? (
-                  <div className="md-spinner-wrap">
-                    <div className="spinner" style={{ margin: "24px auto" }} />
-                  </div>
-                ) : (
-                  <div className="md-episode-list">
-                    {episodes.map((ep) => {
-                      const panel = episodePanels[ep.id] || {};
-                      const isOpen = !!panel.open;
-                      return (
-                        <div
-                          key={ep.id}
-                          className={`md-episode-row${isOpen ? " active" : ""}`}
-                        >
-                          {/* Episode header — click to toggle */}
-                          <div
-                            className="md-episode-header"
+            {episodesLoading ? (
+              <div className="md-spinner-wrap">
+                <div className="spinner" style={{ margin: "24px auto" }} />
+              </div>
+            ) : (
+              <div className="md-episode-list">
+                {episodes.map((ep) => {
+                  const panel = episodePanels[ep.id] || {};
+                  const isOpen = !!panel.open;
+                  return (
+                    <div
+                      key={ep.id}
+                      className={`md-episode-row${isOpen ? " active" : ""}`}
+                    >
+                      {/* Episode row */}
+                      <div className="md-episode-header">
+                        <div className="md-episode-info">
+                          <span className="md-episode-num">
+                            E{String(ep.episode_number).padStart(2, "0")}
+                          </span>
+                          <span className="md-episode-name">{ep.name}</span>
+                          {ep.air_date && (
+                            <span className="md-episode-year">
+                              {ep.air_date.split("-")[0]}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Direct action buttons on the episode row */}
+                        <div className="md-episode-actions">
+                          <button
+                            className="md-source-btn"
                             onClick={() => handleToggleEpisodePanel(ep)}
                           >
-                            <div className="md-episode-info">
-                              <span className="md-episode-num">
-                                E{String(ep.episode_number).padStart(2, "0")}
-                              </span>
-                              <span className="md-episode-name">{ep.name}</span>
-                              {ep.air_date && (
-                                <span className="md-episode-year">
-                                  {ep.air_date.split("-")[0]}
-                                </span>
-                              )}
-                            </div>
-                            <span className="md-episode-chevron">
-                              {isOpen ? "▲" : "▼"}
-                            </span>
-                          </div>
+                            {isOpen ? "▲ Close" : "▶ Stream"}
+                          </button>
+                          <button
+                            className="md-source-btn ghost"
+                            onClick={() => handleToggleEpisodePanel(ep)}
+                          >
+                            🧲 Magnets
+                          </button>
+                        </div>
+                      </div>
 
-                          {/* ── Step 3: Inline Source Panel ── */}
-                          {isOpen && (
-                            <div className="md-episode-panel">
-                              {panel.loading ? (
-                                <div className="md-ep-panel-loading">
-                                  <div className="spinner" style={{ width: 20, height: 20 }} />
-                                  <span>Finding sources…</span>
-                                </div>
-                              ) : !panel.sources || panel.sources.length === 0 ? (
-                                <p className="md-ep-no-sources">
-                                  No sources found for this episode.
-                                </p>
-                              ) : (
-                                <div className="md-ep-source-list">
-                                  {panel.sources.map((src, i) => {
-                                    const quality = src.quality !== "Unknown" ? src.quality : null;
-                                    const releaseYear = src.title?.match(/\b(19|20)\d{2}\b/)?.[0];
-                                    const cleanName = (src.title || "Unknown Release")
-                                      .replace(/\.(mkv|mp4|avi|x264|x265|BluRay|WEBRip|HDTV|WEB-DL|HEVC|H\.264|H\.265)\S*/gi, "")
-                                      .trim();
-                                    const magnetUri = src.magnet || src.link;
-                                    return (
-                                      <div key={i} className="md-ep-source-row">
-                                        <div className="md-ep-source-info">
-                                          {quality && (
-                                            <span className="md-source-quality">{quality}</span>
-                                          )}
-                                          <span className="md-ep-source-name">{cleanName}</span>
-                                          {releaseYear && (
-                                            <span className="md-episode-year">· {releaseYear}</span>
-                                          )}
-                                        </div>
-                                        <div className="md-ep-source-actions">
-                                          <button
-                                            className="md-source-btn"
-                                            onClick={() =>
-                                              handleStartStream(magnetUri, src.infoHash, src.torrentUrl || null)
-                                            }
-                                          >
-                                            ▶ Stream
-                                          </button>
-                                          <a
-                                            href={magnetUri}
-                                            className="md-source-btn ghost"
-                                          >
-                                            🧲 Magnet
-                                          </a>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
+                      {/* Inline Source Panel */}
+                      {isOpen && (
+                        <div className="md-episode-panel">
+                          {panel.loading ? (
+                            <div className="md-ep-panel-loading">
+                              <div
+                                className="spinner"
+                                style={{ width: 18, height: 18 }}
+                              />
+                              <span>Searching EZTV streams…</span>
+                            </div>
+                          ) : !panel.sources || panel.sources.length === 0 ? (
+                            <p className="md-ep-no-sources">
+                              No torrent sources currently found for this episode on EZTV.
+                            </p>
+                          ) : (
+                            <div className="md-ep-source-list">
+                              {panel.sources.map((src, i) => {
+                                const quality =
+                                  src.quality !== "Unknown" ? src.quality : null;
+                                const releaseYear = src.title?.match(
+                                  /\b(19|20)\d{2}\b/
+                                )?.[0];
+                                const cleanName = (src.title || "Unknown Release")
+                                  .replace(
+                                    /\.(mkv|mp4|avi|x264|x265|BluRay|WEBRip|HDTV|WEB-DL|HEVC|H\.264|H\.265)\S*/gi,
+                                    ""
+                                  )
+                                  .trim();
+                                const magnetUri = src.magnet || src.link;
+                                return (
+                                  <div key={i} className="md-ep-source-row">
+                                    <div className="md-ep-source-info">
+                                      {quality && (
+                                        <span className="md-source-quality">
+                                          {quality}
+                                        </span>
+                                      )}
+                                      <span className="md-ep-source-name">
+                                        {cleanName}
+                                      </span>
+                                      {releaseYear && (
+                                        <span className="md-episode-year">
+                                          · {releaseYear}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="md-ep-source-actions">
+                                      <button
+                                        className="md-source-btn"
+                                        onClick={() =>
+                                          handleStartStream(
+                                            magnetUri,
+                                            src.infoHash,
+                                            src.torrentUrl || null
+                                          )
+                                        }
+                                      >
+                                        ▶ Play
+                                      </button>
+                                      <a
+                                        href={magnetUri}
+                                        className="md-source-btn ghost"
+                                      >
+                                        🧲 Magnet
+                                      </a>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </section>
         )}
