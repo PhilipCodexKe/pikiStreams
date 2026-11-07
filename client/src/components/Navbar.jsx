@@ -62,18 +62,20 @@ export default function Navbar() {
     navigate(`/${type}/${item.id}`);
   };
 
-  /* Helper: is this link the current route? */
   const isHome = location.pathname === "/";
 
   return (
     <header className={`site-header${scrolled ? " scrolled" : ""}`}>
       <div className="header-inner">
-        {/* Logo */}
-        <Link to="/" className="site-logo" style={{ textDecoration: "none" }}>
-          <h1 style={{ margin: 0 }}>PikiStreams</h1>
+        <Link to="/" className="site-logo">
+          <img
+            src="/logo.png"
+            alt="PikiStreams Logo"
+            className="site-logo-img"
+          />
+          <h1>ikiStreams</h1>
         </Link>
 
-        {/* Nav pill group */}
         <nav className="site-nav">
           <Link to="/" className={isHome ? "nav-active" : ""}>
             Home
@@ -84,7 +86,6 @@ export default function Navbar() {
           <a href="/#upcoming-section">Upcoming Movies</a>
         </nav>
 
-        {/* Search */}
         <div
           className={`search-wrap${isFocused || searchTerm ? " search-active" : ""}`}
           ref={searchContainerRef}
@@ -117,7 +118,9 @@ export default function Navbar() {
                   : "https://via.placeholder.com/45x68?text=No+Poster";
                 const isTv = item.media_type === "tv";
                 const title = isTv ? item.name : item.title;
-                const releaseDate = isTv ? item.first_air_date : item.release_date;
+                const releaseDate = isTv
+                  ? item.first_air_date
+                  : item.release_date;
                 const year = releaseDate ? releaseDate.split("-")[0] : "";
 
                 return (
@@ -134,10 +137,14 @@ export default function Navbar() {
                     <div className="suggestion-info">
                       <span className="suggestion-title">{title}</span>
                       <div className="suggestion-meta">
-                        <span className={`suggestion-badge ${isTv ? "badge-tv" : "badge-movie"}`}>
+                        <span
+                          className={`suggestion-badge ${isTv ? "badge-tv" : "badge-movie"}`}
+                        >
                           {isTv ? "TV" : "MOVIE"}
                         </span>
-                        {year && <span className="suggestion-year">{year}</span>}
+                        {year && (
+                          <span className="suggestion-year">{year}</span>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -34,6 +34,9 @@ const { LRUCache } = require("lru-cache");
 const { spawn } = require("child_process");
 const { execSync } = require("child_process");
 const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
 
 const app = express();
 const PORT = 3001;
@@ -73,15 +76,131 @@ function detectFfmpeg() {
   );
 }
 
-// ─── LRU Torrent Cache ────────────────────────────────────────────────────────
+// ─── LRU Torrent Cache & Lifecycle Tracker ─────────────────────────────────────
 const MAX_TORRENTS = 10;
 const METADATA_TIMEOUT = 30_000; // ms before DHT cold-start gives up
+const IDLE_GRACE_PERIOD_MS = 5 * 60 * 1000; // 5 minutes inactivity grace period
+const SWEEPER_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes sweeper interval
+
+// Map of infoHash -> { activeViewers: number, lastActivity: number }
+const activityTracker = new Map();
+
+function trackStreamTouch(infoHash) {
+  if (!infoHash) return;
+  const current = activityTracker.get(infoHash) || { activeViewers: 0, lastActivity: Date.now() };
+  current.lastActivity = Date.now();
+  activityTracker.set(infoHash, current);
+}
+
+function trackViewerOpen(infoHash) {
+  if (!infoHash) return;
+  const current = activityTracker.get(infoHash) || { activeViewers: 0, lastActivity: Date.now() };
+  current.activeViewers = Math.max(0, current.activeViewers) + 1;
+  current.lastActivity = Date.now();
+  activityTracker.set(infoHash, current);
+  console.log(`[Lifecycle] Viewer connected to ${infoHash.slice(0, 8)}... (Active: ${current.activeViewers})`);
+}
+
+function trackViewerClose(infoHash) {
+  if (!infoHash) return;
+  const current = activityTracker.get(infoHash);
+  if (current) {
+    current.activeViewers = Math.max(0, current.activeViewers - 1);
+    current.lastActivity = Date.now();
+    console.log(`[Lifecycle] Viewer disconnected from ${infoHash.slice(0, 8)}... (Remaining: ${current.activeViewers})`);
+  }
+}
+
+/**
+ * Determine WebTorrent temp storage folder across OS platforms.
+ * On Windows it defaults to C:\tmp\webtorrent, on Linux /tmp/webtorrent.
+ */
+function getWebTorrentTmpDir() {
+  const isWindows = process.platform === "win32";
+  const primary = isWindows ? "C:\\tmp\\webtorrent" : path.join(os.tmpdir(), "webtorrent");
+  return primary;
+}
+
+/**
+ * Sweeper: destroys idle torrents in memory, cleans their files from disk,
+ * and sweeps orphan folders from the temp directory.
+ */
+async function runDiskSweeper() {
+  const now = Date.now();
+  console.log("[Cleaner] Running 10-minute lifecycle sweeper...");
+
+  // 1. Check all in-memory torrents
+  if (client && client.torrents) {
+    for (const torrent of [...client.torrents]) {
+      const hash = torrent.infoHash;
+      const activity = activityTracker.get(hash);
+
+      const activeViewers = activity ? activity.activeViewers : 0;
+      const lastActivity = activity ? activity.lastActivity : 0;
+      const idleTime = now - lastActivity;
+
+      // Only delete if NO active viewers AND idle for more than 5 minutes
+      if (activeViewers === 0 && idleTime >= IDLE_GRACE_PERIOD_MS) {
+        console.log(`[Cleaner] Torrent ${hash.slice(0, 8)} is idle (${Math.round(idleTime / 1000)}s > 5m grace). Destroying and erasing disk files...`);
+        activityTracker.delete(hash);
+        torrentCache.delete(hash);
+        try {
+          torrent.destroy({ destroyStore: true }, () => {
+            console.log(`[Cleaner] Store destroyed for ${hash.slice(0, 8)}`);
+          });
+        } catch (e) {
+          console.error(`[Cleaner] Error destroying torrent ${hash}:`, e.message);
+        }
+      } else {
+        console.log(`[Cleaner] Torrent ${hash.slice(0, 8)} PROTECTED: activeViewers=${activeViewers}, idleTime=${Math.round(idleTime / 1000)}s`);
+      }
+    }
+  }
+
+  // 2. Physical disk sweep: Clean up orphan folders in tmp/webtorrent
+  const tmpDir = getWebTorrentTmpDir();
+  try {
+    if (fs.existsSync(tmpDir)) {
+      const entries = fs.readdirSync(tmpDir, { withFileTypes: true });
+      const activeHashes = new Set(client ? client.torrents.map((t) => t.infoHash.toLowerCase()) : []);
+
+      for (const entry of entries) {
+        const fullPath = path.join(tmpDir, entry.name);
+        try {
+          const stats = fs.statSync(fullPath);
+          const ageMs = now - stats.mtimeMs;
+
+          // Check if entry name or part of it matches an active torrent
+          let isBelongingToActive = false;
+          if (client && client.torrents) {
+            isBelongingToActive = client.torrents.some(t => {
+              const nameMatch = t.name && entry.name.toLowerCase().includes(t.name.toLowerCase().slice(0, 15));
+              const hashMatch = t.infoHash && entry.name.toLowerCase().includes(t.infoHash.toLowerCase());
+              return nameMatch || hashMatch;
+            });
+          }
+
+          // If it's not active and older than 10 minutes, remove it
+          if (!isBelongingToActive && ageMs > SWEEPER_INTERVAL_MS) {
+            console.log(`[Cleaner] Removing orphan disk item: ${entry.name} (${Math.round(ageMs / 60000)}m old)`);
+            fs.rmSync(fullPath, { recursive: true, force: true });
+          }
+        } catch (fErr) {
+          console.warn(`[Cleaner] Could not inspect/remove ${entry.name}:`, fErr.message);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[Cleaner] Error during disk sweep:", err.message);
+  }
+}
 
 const torrentCache = new LRUCache({
   max: MAX_TORRENTS,
   dispose: (torrent, key) => {
     if (torrent && !torrent.destroyed) {
       console.log(`[LRU] Evicting: ${key.slice(0, 20)}...`);
+      activityTracker.delete(torrent.infoHash);
       torrent.destroy({ destroyStore: true }, () => {});
     }
   },
@@ -461,6 +580,7 @@ app.post("/stream/init", async (req, res) => {
     });
 
     torrentCache.set(cacheKey, torrent);
+    trackStreamTouch(torrent.infoHash);
 
     // Attach target episode pointers to torrent object for subsequent /stream/:infoHash call
     if (fileIdx !== undefined) torrent._targetFileIdx = fileIdx;
@@ -571,6 +691,9 @@ app.get("/stream/:infoHash", async (req, res) => {
   const isInitialRequest =
     !rangeHeader || rangeHeader.replace(/bytes=/, "").split("-")[0] === "0";
 
+  // Mark viewer open & record activity
+  trackViewerOpen(infoHash);
+
   if (isMkv && ffmpegPath && isInitialRequest) {
     console.log(`[Stream] MKV remux: "${file.name}" → fMP4`);
     const readStream = file.createReadStream();
@@ -578,6 +701,7 @@ app.get("/stream/:infoHash", async (req, res) => {
     const ff = remuxToFmp4(readStream, res);
 
     req.on("close", () => {
+      trackViewerClose(infoHash);
       if (readStream && !readStream.destroyed) readStream.destroy();
       if (!ff.killed) ff.kill("SIGKILL");
     });
@@ -619,6 +743,7 @@ app.get("/stream/:infoHash", async (req, res) => {
   );
 
   req.on("close", () => {
+    trackViewerClose(infoHash);
     if (readStream && !readStream.destroyed) readStream.destroy();
   });
 
@@ -638,9 +763,12 @@ app.get("/stream/:infoHash", async (req, res) => {
  * Returns live torrent diagnostics.
  */
 app.get("/stream/status/:infoHash", async (req, res) => {
+  const infoHash = req.params.infoHash;
+  trackStreamTouch(infoHash); // Register activity so active player status poll protects stream
+
   const t =
-    torrentCache.get(req.params.infoHash) ??
-    (await client?.get(req.params.infoHash));
+    torrentCache.get(infoHash) ??
+    (await client?.get(infoHash));
   if (!t) return res.json({ found: false });
 
   return res.json({
@@ -671,6 +799,16 @@ async function init() {
   );
 
   console.log(`[WebTorrent] Client initialized (maxConns=${client.maxConns})`);
+
+  // Initial startup cleanup (cleans leftover temp video files from any previous crash/restart)
+  setTimeout(() => {
+    runDiskSweeper().catch((e) => console.error("[Cleaner] Startup sweep error:", e.message));
+  }, 5000);
+
+  // Set recurring 10-minute lifecycle sweeper
+  setInterval(() => {
+    runDiskSweeper().catch((e) => console.error("[Cleaner] Periodic sweep error:", e.message));
+  }, SWEEPER_INTERVAL_MS);
 
   app.listen(PORT, () => {
     console.log(`[Stream Server] http://localhost:${PORT}`);

@@ -717,12 +717,12 @@ export default function MovieDetail() {
                                 className="spinner"
                                 style={{ width: 18, height: 18 }}
                               />
-                              <span>Searching EZTV streams…</span>
+                              <span>Just a sec...</span>
                             </div>
                           ) : !panel.sources || panel.sources.length === 0 ? (
                             <p className="md-ep-no-sources">
                               No torrent sources currently found for this
-                              episode on EZTV.
+                              episode. Please come back later.
                             </p>
                           ) : (
                             <div className="md-ep-source-list">
